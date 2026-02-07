@@ -250,6 +250,7 @@
     const TI = KML_PLACES.find(p=>p.type==='tipis');
     const AT = KML_PLACES.find(p=>p.type==='workshop');
     const ME = KML_PLACES.find(p=>p.type==='mere_mitage');
+    const rowAngle = Math.atan2(ME.x-AT.x, -(ME.z-AT.z));
 
     function terrH(x, z) {
         let y = 0;
@@ -335,11 +336,14 @@
             const x=pos.getX(i), z=pos.getZ(i);
             const nearJard = Math.sqrt((x-JA.x)**2+(z-JA.z)**2)<10;
             let r,g,b;
-            // Check if near the building row road/courtyard
+            // Check if near the road (runs between GM and long building)
             const nearRoad = (() => {
-                // Road runs N-S along east side of buildings
-                const roadX = AT.x + 5 + (z - AT.z) * (ME.x + 3 - AT.x - 5) / (ME.z - AT.z);
-                return Math.abs(x - roadX) < 3 && z > ME.z - 10 && z < AT.z + 15;
+                // Road follows AT→ME line offset 3.5 units west (perpendicular)
+                const t = Math.max(0, Math.min(1, ((x-AT.x)*(ME.x-AT.x)+(z-AT.z)*(ME.z-AT.z)) /
+                    ((ME.x-AT.x)**2+(ME.z-AT.z)**2)));
+                const rx = AT.x + (ME.x-AT.x)*t - Math.cos(rowAngle)*3.5;
+                const rz = AT.z + (ME.z-AT.z)*t + Math.sin(rowAngle)*3.5;
+                return Math.sqrt((x-rx)**2+(z-rz)**2) < 3 && z > ME.z-10 && z < AT.z+15;
             })();
             if (isForestZone(x, z)) {
                 // Dark forest floor - brown-green, leaf litter
@@ -1021,26 +1025,23 @@
     // ═══════════════════════════════════════════
     // Building row alignment: AT(9.67,-2.81) → GM(21.74,-17.66) → ME(23.13,-26.33)
     // From aerial: long continuous row of red/brown-roofed farm buildings, N-S along east clearing edge
-    const rowAngle = Math.atan2(ME.x-AT.x, -(ME.z-AT.z)); // ~0.52 rad
     function rowPos(t) { // parametric position along building row, t=0→AT, t=1→ME
         return { x: AT.x + (ME.x-AT.x)*t, z: AT.z + (ME.z-AT.z)*t };
     }
     const extraBuildings = [
-        // MAIN ROW: large rectangular buildings filling gaps between AT, GM, ME
-        // Long farm building between AT and GM (t≈0.2)
-        (() => { const p=rowPos(0.18); return { x:p.x, z:p.z, opts: { w:4, h:3, d:8, roof:M.roofBrown, wall:toon(0xd0c0a0), rot:rowAngle, chimney:false } }; })(),
-        // Large hangar/barn (t≈0.35)
-        (() => { const p=rowPos(0.35); return { x:p.x, z:p.z, opts: { w:5, h:3.2, d:9, roof:M.roofRed, wall:toon(0xc8b898), rot:rowAngle, chimney:false } }; })(),
-        // Connecting building near GM (t≈0.55)
-        (() => { const p=rowPos(0.55); return { x:p.x+1, z:p.z+1, opts: { w:4.5, h:3, d:7, roof:M.roofBrown, wall:M.wallBeige, rot:rowAngle, chimney:false } }; })(),
-        // Building between GM and ME (t≈0.78)
-        (() => { const p=rowPos(0.78); return { x:p.x, z:p.z, opts: { w:4, h:2.8, d:6, roof:M.roofRed, wall:toon(0xd8c8a8), rot:rowAngle, chimney:false } }; })(),
-        // White-roofed building (visible in aerial as bright/white roof)
-        (() => { const p=rowPos(0.48); return { x:p.x+4, z:p.z+2, opts: { w:5, h:2.5, d:6, roof:toon(0xe8e0d0), wall:M.wall, rot:rowAngle, chimney:false } }; })(),
-        // FLANKING: smaller buildings east of the row (across the road)
-        { x: AT.x+8, z: AT.z+2, opts: { w:3, h:2, d:4, roof:M.metalRoof, wall:toon(0xb8a888), rot:rowAngle+0.1, chimney:false } },
-        { x: GM.x+6, z: GM.z+3, opts: { w:3.5, h:2.2, d:5, roof:M.metalRoof, wall:toon(0xc0b8a0), rot:rowAngle, chimney:false } },
-        // Small outbuilding south of row
+        // ── LONG BUILDING on WEST side of road (replacing the pâté de maisons) ──
+        // Matches OSM map: large rectangular building opposite the Grande Maison
+        // Positioned parallel to the building row, on the west/left side of the route
+        (() => {
+            const mid = rowPos(0.5); // center of the AT→ME line
+            // Offset ~7 units west (perpendicular to row direction)
+            const perpX = Math.cos(rowAngle), perpZ = Math.sin(rowAngle);
+            return { x: mid.x - perpX*7, z: mid.z + perpZ*7, opts: {
+                w: 5.5, h: 3.5, d: 24, roof: M.roofRed, wall: toon(0xd0c0a0),
+                rot: rowAngle, chimney: false
+            }};
+        })(),
+        // Small outbuilding south of AT
         { x: AT.x+3, z: AT.z+8, opts: { w:3, h:2, d:4, roof:M.roofBrown, wall:toon(0xc8b898), rot:0.1, chimney:false } },
         // Forest house in the woods (west side)
         { x: FCX+6, z: FCZ-4, opts: { w:2.5, h:2.2, d:3, roof:M.roofBrown, wall:toon(0xc8b898), rot:0.6 } },
@@ -1113,61 +1114,57 @@
     // ═══════════════════════════════════════════
     // Paths
     // ═══════════════════════════════════════════
-    // ── Main road (orange dots in aerial): runs N-S along EAST side of building row ──
-    // Road enters from south, runs north past all buildings
-    const roadEastOffset = 5; // road is ~5 units east of building row
+    // ── Main road: runs BETWEEN Grande Maison (east/right) and long building (west/left) ──
+    // Matches OSM map layout — road passes through the center of the building area
+    // The road is ~3.5 units west of GM, perpendicular to the row direction
+    const perpX = Math.cos(rowAngle), perpZ = Math.sin(rowAngle);
+    function roadPt(t) { // road follows AT→ME line, offset ~3.5 units west (perpendicular)
+        const p = rowPos(t);
+        return [p.x - perpX*3.5, p.z + perpZ*3.5];
+    }
+    // Main road from south to north, passing between the two building rows
     scene.add(mkPath([
-        [AT.x+roadEastOffset+3, 60],
-        [AT.x+roadEastOffset+2, 50],
-        [AT.x+roadEastOffset+1, 40],
-        [AT.x+roadEastOffset, JA.z],
-        [AT.x+roadEastOffset, AT.z+8],
-        [AT.x+roadEastOffset, AT.z],
-        [(AT.x+GM.x)/2+roadEastOffset, (AT.z+GM.z)/2],
-        [GM.x+roadEastOffset-1, GM.z],
-        [ME.x+roadEastOffset-2, ME.z],
-        [ME.x+roadEastOffset-2, ME.z-8],
+        [roadPt(0)[0]+1, 60],
+        [roadPt(0)[0]+1, 45],
+        [roadPt(0)[0], JA.z],
+        [roadPt(0)[0], AT.z+5],
+        roadPt(0),
+        roadPt(0.25),
+        roadPt(0.5),
+        roadPt(0.63),  // near GM
+        roadPt(0.8),
+        roadPt(1.0),   // near ME
+        roadPt(1.15),  // continue north
     ], 3, M.road));
-    // Road continues north past buildings
+    // Road continues north
     scene.add(mkPath([
-        [ME.x+roadEastOffset-2, ME.z-8],
-        [ME.x+roadEastOffset-1, ME.z-15],
-        [ME.x+roadEastOffset, ME.z-22],
+        roadPt(1.15),
+        roadPt(1.3),
+        roadPt(1.45),
     ], 2.5, M.road));
-    // ── Curved forest path going WEST from buildings into forest (visible in aerial) ──
-    // Branches off from around GM area, curves west through the canopy
+    // ── Curved forest path going WEST from road into forest ──
     scene.add(mkPath([
-        [GM.x-2, GM.z+2],
-        [GM.x-8, GM.z+1],
-        [GM.x-14, GM.z+3],
-        [GM.x-20, GM.z+6],
+        roadPt(0.5),
+        [roadPt(0.5)[0]-8, roadPt(0.5)[1]+2],
+        [roadPt(0.5)[0]-16, roadPt(0.5)[1]+5],
         [FH.x+8, FH.z-4],
         [FH.x+3, FH.z-2],
         [FH.x, FH.z],
         [PL.x+5, PL.z+3],
         [PL.x, PL.z],
     ], 1.3, M.path));
-    // Courtyard road between buildings (connects road to building west-sides)
+    // Forest path north to tipis (branches from road)
     scene.add(mkPath([
-        [AT.x+roadEastOffset, AT.z],
-        [AT.x, AT.z],
-    ], 2, M.road));
-    scene.add(mkPath([
-        [GM.x+roadEastOffset-1, GM.z],
-        [GM.x, GM.z],
-    ], 2, M.road));
-    // Forest path north to tipis
-    scene.add(mkPath([
-        [GM.x-2, GM.z-2],
-        [GM.x-6, GM.z-6],
+        roadPt(0.9),
+        [roadPt(0.9)[0]-5, roadPt(0.9)[1]-5],
         [TI.x+8, TI.z+10],
         [TI.x+4, TI.z+5],
         [TI.x, TI.z],
     ], 1, M.path));
     // Path south toward gardens
     scene.add(mkPath([
-        [AT.x+roadEastOffset, AT.z+8],
-        [AT.x+roadEastOffset-2, AT.z+16],
+        roadPt(0),
+        [roadPt(0)[0]-1, AT.z+12],
         [JA.x+5, JA.z-5],
         [JA.x+2, JA.z],
     ], 1.5, M.road));
