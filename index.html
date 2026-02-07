@@ -162,10 +162,10 @@
     // ═══════════════════════════════════════════
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xd4eef7);
-    scene.fog = new THREE.FogExp2(0xd4eef7, 0.005);
+    scene.fog = new THREE.FogExp2(0xd4eef7, 0.004);
 
     const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 500);
-    camera.position.set(5, 55, 72);
+    camera.position.set(10, 65, 75);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(innerWidth, innerHeight);
@@ -182,12 +182,12 @@
     composer.addPass(outlinePass);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0, 0);
+    controls.target.set(5, 0, -5);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.maxPolarAngle = Math.PI / 2.2;
     controls.minDistance = 15;
-    controls.maxDistance = 130;
+    controls.maxDistance = 160;
 
     // ═══════════════════════════════════════════
     // Lighting (bright, flat BD style)
@@ -198,8 +198,8 @@
     sun.position.set(25, 45, 20);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
-    sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70;
+    sun.shadow.camera.left = -85; sun.shadow.camera.right = 85;
+    sun.shadow.camera.top = 85; sun.shadow.camera.bottom = -85;
     scene.add(sun);
 
     const fill = new THREE.DirectionalLight(0xc0d8ff, 0.5);
@@ -248,27 +248,83 @@
     const GM = KML_PLACES.find(p=>p.type==='grande_maison');
     const JA = KML_PLACES.find(p=>p.type==='garden');
     const TI = KML_PLACES.find(p=>p.type==='tipis');
+    const AT = KML_PLACES.find(p=>p.type==='workshop');
+    const ME = KML_PLACES.find(p=>p.type==='mere_mitage');
 
     function terrH(x, z) {
         let y = 0;
+        // Gentle hill rising toward the northwest (the "colline" from WW1)
+        y += Math.max(0, 5 - Math.sqrt((x+15)**2 + (z+15)**2)*0.06) * 1.2;
+        // Plateau area - elevated flat zone to the west
+        const pd = Math.sqrt((x-PL.x)**2 + (z-PL.z)**2);
+        y += Math.max(0, 6 - pd*0.12) * 0.8;
+        // Western forest ridge
         const fd = Math.sqrt((x-FCX)**2 + (z-FCZ)**2);
-        y += Math.max(0, 7 - fd*0.15) * (0.7 + 0.3*Math.cos(fd*0.08));
+        y += Math.max(0, 5 - fd*0.1) * (0.6 + 0.2*Math.cos(fd*0.08));
+        // Northern tipis area - slight rise
         const rd = Math.abs(z-TI.z)*0.5 + Math.abs(x-TI.x)*0.3;
-        y += Math.max(0, 3 - rd*0.1);
+        y += Math.max(0, 2.5 - rd*0.08);
+        // Gardens depression (southern, lower ground)
         const jd = Math.sqrt((x-JA.x)**2 + (z-JA.z)**2);
-        if (jd < 12) y -= (12-jd)*0.15;
-        y += Math.sin(x*0.06)*Math.cos(z*0.05)*1.8;
-        y += Math.sin(x*0.13+1)*Math.cos(z*0.11+2)*0.6;
+        if (jd < 15) y -= (15-jd)*0.12;
+        // Gentle undulation
+        y += Math.sin(x*0.04)*Math.cos(z*0.035)*2.2;
+        y += Math.sin(x*0.09+1)*Math.cos(z*0.07+2)*0.8;
+        y += Math.sin(x*0.17+3)*Math.cos(z*0.14+1)*0.3;
+        // Smooth area near grande maison
         const vd = Math.sqrt((x-GM.x)**2 + (z-GM.z)**2);
-        if (vd < 18) { const f=Math.max(0,1-vd/18); y *= (1-f*0.5); y += f*2; }
-        return y + 1.5;
+        if (vd < 20) { const f=Math.max(0,1-vd/20); y *= (1-f*0.4); y += f*2.5; }
+        // General slope: south is lower, north is higher
+        y += (-z * 0.015);
+        return y + 2;
+    }
+
+    // ═══════════════════════════════════════════
+    // Zone classification (aerial view realism)
+    // ═══════════════════════════════════════════
+    function isForestZone(x, z) {
+        // Tipis clearing (small island in the forest, visible as domes in aerial)
+        if (Math.sqrt((x-TI.x)**2 + (z-TI.z)**2) < 10) return false;
+        // Forest comes VERY close to buildings on the west side
+        // The building row runs from AT(~10,-3) to ME(~23,-26)
+        let westEdge;
+        if (z > 20) {
+            // South meadow: forest edge a bit further west
+            westEdge = 0 + Math.sin(z * 0.07) * 4;
+        } else if (z > 0) {
+            // Transition: forest closing in toward buildings
+            westEdge = 4 + (20 - z) * 0.15 + Math.sin(z * 0.12) * 2;
+        } else if (z > -28) {
+            // Near buildings: forest RIGHT next to building row (~5 units west)
+            westEdge = 7 + Math.sin(z * 0.15) * 2;
+        } else {
+            // North: almost entirely forest
+            westEdge = 14 + Math.sin(z * 0.1) * 3;
+        }
+        if (x < westEdge) return true;
+        // Northern forest closes in aggressively
+        const northEdge = -28 + Math.sin(x * 0.12) * 3;
+        if (z < northEdge && x < 20) return true;
+        // Southwest forest
+        if (z > 35 && x < 2) return true;
+        // Everything far from clearing center
+        const dist = Math.sqrt((x-18)**2 + (z-2)**2);
+        if (dist > 52) return true;
+        return false;
+    }
+    function isFieldZone(x, z) {
+        // Agricultural fields to the east
+        if (x > 28 && z > -25 && z < 30) return true;
+        // Southern fields (below gardens, east side)
+        if (z > 32 && x > 8) return true;
+        return false;
     }
 
     // ═══════════════════════════════════════════
     // Terrain mesh (smooth, rounded)
     // ═══════════════════════════════════════════
     (() => {
-        const S = 160, R = 180;
+        const S = 180, R = 200;
         const geo = new THREE.PlaneGeometry(S, S, R, R);
         geo.rotateX(-Math.PI/2);
         const pos = geo.attributes.position;
@@ -277,12 +333,31 @@
         const cols = new Float32Array(pos.count*3);
         for (let i=0; i<pos.count; i++) {
             const x=pos.getX(i), z=pos.getZ(i);
-            const inForest = Math.sqrt((x-FCX)**2+(z-FCZ)**2)<30 && x<5;
             const nearJard = Math.sqrt((x-JA.x)**2+(z-JA.z)**2)<10;
             let r,g,b;
-            if(inForest){ r=0.22+Math.random()*0.04; g=0.48+Math.random()*0.08; b=0.15+Math.random()*0.03; }
-            else if(nearJard){ r=0.36+Math.random()*0.04; g=0.7+Math.random()*0.08; b=0.28+Math.random()*0.04; }
-            else { r=0.36+Math.random()*0.05; g=0.66+Math.random()*0.1; b=0.26+Math.random()*0.05; }
+            // Check if near the building row road/courtyard
+            const nearRoad = (() => {
+                // Road runs N-S along east side of buildings
+                const roadX = AT.x + 5 + (z - AT.z) * (ME.x + 3 - AT.x - 5) / (ME.z - AT.z);
+                return Math.abs(x - roadX) < 3 && z > ME.z - 10 && z < AT.z + 15;
+            })();
+            if (isForestZone(x, z)) {
+                // Dark forest floor - brown-green, leaf litter
+                r=0.14+Math.random()*0.05; g=0.28+Math.random()*0.07; b=0.09+Math.random()*0.04;
+            } else if (nearRoad) {
+                // Gravel/dirt road surface - light gray-brown
+                r=0.58+Math.random()*0.06; g=0.54+Math.random()*0.05; b=0.44+Math.random()*0.05;
+            } else if (isFieldZone(x, z)) {
+                // Agricultural fields - lighter yellow-green with plowed rows
+                const row = Math.sin(x*0.4+z*0.2)*0.5+0.5;
+                r=0.42+row*0.08+Math.random()*0.04; g=0.52+row*0.06+Math.random()*0.06; b=0.18+Math.random()*0.04;
+            } else if (nearJard) {
+                // Garden area - rich cultivated green
+                r=0.28+Math.random()*0.04; g=0.62+Math.random()*0.1; b=0.20+Math.random()*0.04;
+            } else {
+                // Clearing meadow - bright green (vivid in aerial)
+                r=0.30+Math.random()*0.05; g=0.58+Math.random()*0.12; b=0.20+Math.random()*0.05;
+            }
             cols[i*3]=r; cols[i*3+1]=g; cols[i*3+2]=b;
         }
         geo.setAttribute('color', new THREE.BufferAttribute(cols,3));
@@ -748,51 +823,47 @@
         return g;
     }
 
-    // Tipis (very round cones)
+    // Tipis et cabanons — white domes/yurts (visible as white circles in aerial)
     function mkTipis(p) {
         const g = new THREE.Group(), ty = terrH(p.x, p.z);
-        const tipiPos = [[0,0],[-4,2],[3,3]];
-        const tipiCols = [0xcc4444, 0x4477aa, 0xc4943a];
-        tipiPos.forEach(([tx,tz], i) => {
-            const tg = new THREE.Group();
-            const h = 3.8, r = 1.6;
-            // Round cone
-            const tipi = new THREE.Mesh(new THREE.ConeGeometry(r, h, 16), M.canvas);
-            tipi.position.y = h/2; tipi.castShadow=true; tg.add(tipi);
-            // Decorative band
-            const band = new THREE.Mesh(new THREE.TorusGeometry(r*0.85, 0.12, 8, 16), toon(tipiCols[i]));
-            band.position.y = h*0.3; band.rotation.x = Math.PI/2; tg.add(band);
-            // Poles
-            for (let p=0; p<3; p++) {
-                const a = (p/3)*Math.PI*2;
-                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 6), toon(0xa07848));
-                pole.position.set(Math.cos(a)*0.2, h+0.4, Math.sin(a)*0.2);
-                pole.rotation.x = Math.cos(a)*0.2;
-                pole.rotation.z = Math.sin(a)*0.2;
-                tg.add(pole);
-            }
+        const domeMat = toon(0xf0ece0); // white/off-white canvas
+        const baseRing = toon(0xd8d0c0);
+        // 5 white dome structures scattered in a clearing
+        [[0,0],[3.5,2.5],[-2.5,3.5],[4.5,-2],[-3.5,-1.5]].forEach(([dx, dz]) => {
+            const dg = new THREE.Group();
+            const r = 1.3 + Math.random()*0.3;
+            // Cylindrical base wall
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(r, r+0.05, 1.2, 20), domeMat);
+            base.position.y = 0.6; base.castShadow = true; dg.add(base);
+            // Base ring
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.06, 8, 20), baseRing);
+            ring.position.y = 1.2; ring.rotation.x = -Math.PI/2; dg.add(ring);
+            // Dome top (hemisphere)
+            const dome = new THREE.Mesh(
+                new THREE.SphereGeometry(r, 20, 12, 0, Math.PI*2, 0, Math.PI*0.5),
+                domeMat
+            );
+            dome.position.y = 1.2; dome.castShadow = true; dg.add(dome);
             // Round door
-            const df = new THREE.Mesh(new THREE.CircleGeometry(0.4, 12), M.doorBrown);
-            df.position.set(0, 0.6, r-0.05); tg.add(df);
-            tg.position.set(tx, 0, tz); tg.rotation.y = Math.random()*Math.PI*2;
-            g.add(tg);
+            const door = new THREE.Mesh(new THREE.CircleGeometry(0.35, 12), M.doorBrown);
+            door.position.set(0, 0.5, r+0.02); dg.add(door);
+            dg.position.set(dx, 0, dz);
+            dg.rotation.y = Math.random() * Math.PI * 2;
+            g.add(dg);
         });
-        // Cabanons (round huts)
-        [[5,-2],[-3,-3]].forEach(([cx,cz]) => {
-            const cab = new THREE.Group();
-            const cw = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.1, 1.8, 14), toon(0xb8860b));
-            cw.position.y = 0.9; cw.castShadow=true; cab.add(cw);
-            const cr = new THREE.Mesh(new THREE.SphereGeometry(1.2, 14, 10, 0, Math.PI*2, 0, Math.PI*0.45), toon(0x654321));
-            cr.position.y = 1.8; cr.scale.y = 0.7; cab.add(cr);
-            cab.position.set(cx, 0, cz);
-            g.add(cab);
-        });
-        // Round fire pit
-        const fire = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.18, 10, 16), M.stone);
-        fire.position.set(0, 0.1, 1.5); fire.rotation.x = -Math.PI/2; g.add(fire);
-        // Fire glow
+        // Cabanon (wooden round hut)
+        const cab = new THREE.Group();
+        const cw = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.2, 1.8, 14), toon(0xb8860b));
+        cw.position.y = 0.9; cw.castShadow = true; cab.add(cw);
+        const cr = new THREE.Mesh(new THREE.SphereGeometry(1.3, 14, 10, 0, Math.PI*2, 0, Math.PI*0.45), toon(0x654321));
+        cr.position.y = 1.8; cr.scale.y = 0.7; cab.add(cr);
+        cab.position.set(6, 0, -3);
+        g.add(cab);
+        // Fire pit
+        const fire = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.18, 10, 16), M.stone);
+        fire.position.set(0, 0.1, 1.8); fire.rotation.x = -Math.PI/2; g.add(fire);
         const glow = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), toon(0xff6600));
-        glow.position.set(0, 0.3, 1.5); g.add(glow);
+        glow.position.set(0, 0.3, 1.8); g.add(glow);
         g.position.set(p.x, ty, p.z);
         return g;
     }
@@ -945,67 +1016,229 @@
     });
 
     // ═══════════════════════════════════════════
-    // Forest trees
+    // Additional buildings (21 total on property)
+    // Chalets, farm buildings, sheds, offices
     // ═══════════════════════════════════════════
-    for (let i=0; i<280; i++) {
-        const a = Math.random()*Math.PI*2, d = 2+Math.random()*28;
-        const fx = FCX+Math.cos(a)*d, fz = FCZ+Math.sin(a)*d;
-        if (fx>10 || Math.sqrt((fx-FCX)**2+(fz-FCZ)**2)>30) continue;
-        let skip=false;
-        for (const p of KML_PLACES) if (Math.sqrt((fx-p.x)**2+(fz-p.z)**2)<5) { skip=true; break; }
-        if (skip) continue;
-        scene.add(mkTree(fx, fz, 2.2+Math.random()*3.5, Math.random()>0.3?'round':'pine'));
+    // Building row alignment: AT(9.67,-2.81) → GM(21.74,-17.66) → ME(23.13,-26.33)
+    // From aerial: long continuous row of red/brown-roofed farm buildings, N-S along east clearing edge
+    const rowAngle = Math.atan2(ME.x-AT.x, -(ME.z-AT.z)); // ~0.52 rad
+    function rowPos(t) { // parametric position along building row, t=0→AT, t=1→ME
+        return { x: AT.x + (ME.x-AT.x)*t, z: AT.z + (ME.z-AT.z)*t };
     }
-    // Scattered
-    for (let i=0; i<45; i++) {
-        const tx=-20+Math.random()*70, tz=-50+Math.random()*100;
-        if (tx<10 && Math.sqrt((tx-FCX)**2+(tz-FCZ)**2)<30) continue;
-        let skip=false;
-        for (const p of KML_PLACES) if (Math.sqrt((tx-p.x)**2+(tz-p.z)**2)<6) { skip=true; break; }
-        if (skip) continue;
-        scene.add(mkTree(tx, tz, 1.8+Math.random()*2, 'round'));
+    const extraBuildings = [
+        // MAIN ROW: large rectangular buildings filling gaps between AT, GM, ME
+        // Long farm building between AT and GM (t≈0.2)
+        (() => { const p=rowPos(0.18); return { x:p.x, z:p.z, opts: { w:4, h:3, d:8, roof:M.roofBrown, wall:toon(0xd0c0a0), rot:rowAngle, chimney:false } }; })(),
+        // Large hangar/barn (t≈0.35)
+        (() => { const p=rowPos(0.35); return { x:p.x, z:p.z, opts: { w:5, h:3.2, d:9, roof:M.roofRed, wall:toon(0xc8b898), rot:rowAngle, chimney:false } }; })(),
+        // Connecting building near GM (t≈0.55)
+        (() => { const p=rowPos(0.55); return { x:p.x+1, z:p.z+1, opts: { w:4.5, h:3, d:7, roof:M.roofBrown, wall:M.wallBeige, rot:rowAngle, chimney:false } }; })(),
+        // Building between GM and ME (t≈0.78)
+        (() => { const p=rowPos(0.78); return { x:p.x, z:p.z, opts: { w:4, h:2.8, d:6, roof:M.roofRed, wall:toon(0xd8c8a8), rot:rowAngle, chimney:false } }; })(),
+        // White-roofed building (visible in aerial as bright/white roof)
+        (() => { const p=rowPos(0.48); return { x:p.x+4, z:p.z+2, opts: { w:5, h:2.5, d:6, roof:toon(0xe8e0d0), wall:M.wall, rot:rowAngle, chimney:false } }; })(),
+        // FLANKING: smaller buildings east of the row (across the road)
+        { x: AT.x+8, z: AT.z+2, opts: { w:3, h:2, d:4, roof:M.metalRoof, wall:toon(0xb8a888), rot:rowAngle+0.1, chimney:false } },
+        { x: GM.x+6, z: GM.z+3, opts: { w:3.5, h:2.2, d:5, roof:M.metalRoof, wall:toon(0xc0b8a0), rot:rowAngle, chimney:false } },
+        // Small outbuilding south of row
+        { x: AT.x+3, z: AT.z+8, opts: { w:3, h:2, d:4, roof:M.roofBrown, wall:toon(0xc8b898), rot:0.1, chimney:false } },
+        // Forest house in the woods (west side)
+        { x: FCX+6, z: FCZ-4, opts: { w:2.5, h:2.2, d:3, roof:M.roofBrown, wall:toon(0xc8b898), rot:0.6 } },
+        // Small building near south meadow
+        { x: JA.x+10, z: JA.z-6, opts: { w:3, h:2, d:4, roof:M.roofRed, wall:M.wallBeige, rot:-0.1, chimney:false } },
+    ];
+    extraBuildings.forEach(b => {
+        scene.add(mkHouse(b.x, b.z, b.opts));
+    });
+
+    // ═══════════════════════════════════════════
+    // Dense forest belt (Forêt de Laigue - aerial view)
+    // ═══════════════════════════════════════════
+    // Dense forest zone - systematic grid with jitter for natural look
+    const forestSpacing = 3.5; // tree spacing in forest
+    const allBuildings = KML_PLACES.concat(extraBuildings);
+    for (let gx = -72; gx < 72; gx += forestSpacing) {
+        for (let gz = -72; gz < 72; gz += forestSpacing) {
+            const fx = gx + (Math.random()-0.5)*2.5;
+            const fz = gz + (Math.random()-0.5)*2.5;
+            if (!isForestZone(fx, fz)) continue;
+            // Skip near any building
+            let skip = false;
+            for (const p of allBuildings) if (Math.sqrt((fx-p.x)**2+(fz-p.z)**2)<4.5) { skip=true; break; }
+            if (skip) continue;
+            // Old-growth forest: taller trees, mostly deciduous
+            const h = 3 + Math.random()*4.5;
+            const type = Math.random() > 0.15 ? 'round' : 'pine';
+            scene.add(mkTree(fx, fz, h, type));
+        }
     }
+    // Forest edge trees - extra density along the edge for defined boundary
+    for (let i = 0; i < 120; i++) {
+        const fx = -70 + Math.random()*140;
+        const fz = -70 + Math.random()*140;
+        // Only place near forest edge (just inside forest zone)
+        if (!isForestZone(fx, fz)) continue;
+        if (isForestZone(fx+5, fz) && isForestZone(fx-5, fz) && isForestZone(fx, fz+5) && isForestZone(fx, fz-5)) continue;
+        let skip = false;
+        for (const p of KML_PLACES) if (Math.sqrt((fx-p.x)**2+(fz-p.z)**2)<4) { skip=true; break; }
+        if (skip) continue;
+        scene.add(mkTree(fx, fz, 2+Math.random()*3, 'round'));
+    }
+    // Scattered isolated trees in the south/east meadow (visible as dark spots in aerial)
+    // From aerial: a few individual large trees and some dark conifers in the clearing
+    const meadowTrees = [
+        // South meadow scattered trees (visible in aerial)
+        { x: 18, z: 25, h: 4, type: 'round' },
+        { x: 25, z: 15, h: 3.5, type: 'pine' },  // dark conifer
+        { x: 30, z: 22, h: 4.5, type: 'round' },
+        { x: 22, z: 35, h: 3, type: 'pine' },     // dark conifer
+        { x: 28, z: 8, h: 4, type: 'round' },
+        // Trees east of road
+        { x: 32, z: -8, h: 3.5, type: 'round' },
+        { x: 35, z: -18, h: 4, type: 'pine' },
+        // A few trees in the meadow south of buildings
+        { x: 15, z: 12, h: 3.5, type: 'round' },
+        { x: 10, z: 20, h: 4, type: 'round' },
+        { x: 20, z: 5, h: 3, type: 'round' },
+        // Trees near the clearing/forest edge transition
+        { x: 8, z: 8, h: 3, type: 'round' },
+        { x: 12, z: -8, h: 2.5, type: 'round' },
+    ];
+    meadowTrees.forEach(t => {
+        if (!isForestZone(t.x, t.z)) {
+            scene.add(mkTree(t.x, t.z, t.h, t.type));
+        }
+    });
 
     // ═══════════════════════════════════════════
     // Paths
     // ═══════════════════════════════════════════
-    const AT=KML_PLACES.find(p=>p.type==='workshop');
-    const ME=KML_PLACES.find(p=>p.type==='mere_mitage');
+    // ── Main road (orange dots in aerial): runs N-S along EAST side of building row ──
+    // Road enters from south, runs north past all buildings
+    const roadEastOffset = 5; // road is ~5 units east of building row
+    scene.add(mkPath([
+        [AT.x+roadEastOffset+3, 60],
+        [AT.x+roadEastOffset+2, 50],
+        [AT.x+roadEastOffset+1, 40],
+        [AT.x+roadEastOffset, JA.z],
+        [AT.x+roadEastOffset, AT.z+8],
+        [AT.x+roadEastOffset, AT.z],
+        [(AT.x+GM.x)/2+roadEastOffset, (AT.z+GM.z)/2],
+        [GM.x+roadEastOffset-1, GM.z],
+        [ME.x+roadEastOffset-2, ME.z],
+        [ME.x+roadEastOffset-2, ME.z-8],
+    ], 3, M.road));
+    // Road continues north past buildings
+    scene.add(mkPath([
+        [ME.x+roadEastOffset-2, ME.z-8],
+        [ME.x+roadEastOffset-1, ME.z-15],
+        [ME.x+roadEastOffset, ME.z-22],
+    ], 2.5, M.road));
+    // ── Curved forest path going WEST from buildings into forest (visible in aerial) ──
+    // Branches off from around GM area, curves west through the canopy
+    scene.add(mkPath([
+        [GM.x-2, GM.z+2],
+        [GM.x-8, GM.z+1],
+        [GM.x-14, GM.z+3],
+        [GM.x-20, GM.z+6],
+        [FH.x+8, FH.z-4],
+        [FH.x+3, FH.z-2],
+        [FH.x, FH.z],
+        [PL.x+5, PL.z+3],
+        [PL.x, PL.z],
+    ], 1.3, M.path));
+    // Courtyard road between buildings (connects road to building west-sides)
+    scene.add(mkPath([
+        [AT.x+roadEastOffset, AT.z],
+        [AT.x, AT.z],
+    ], 2, M.road));
+    scene.add(mkPath([
+        [GM.x+roadEastOffset-1, GM.z],
+        [GM.x, GM.z],
+    ], 2, M.road));
+    // Forest path north to tipis
+    scene.add(mkPath([
+        [GM.x-2, GM.z-2],
+        [GM.x-6, GM.z-6],
+        [TI.x+8, TI.z+10],
+        [TI.x+4, TI.z+5],
+        [TI.x, TI.z],
+    ], 1, M.path));
+    // Path south toward gardens
+    scene.add(mkPath([
+        [AT.x+roadEastOffset, AT.z+8],
+        [AT.x+roadEastOffset-2, AT.z+16],
+        [JA.x+5, JA.z-5],
+        [JA.x+2, JA.z],
+    ], 1.5, M.road));
+    // Forest path: tipis to plateau
+    scene.add(mkPath([[TI.x,TI.z],[TI.x-4,TI.z+5],[PL.x+4,PL.z-5],[PL.x,PL.z]], 0.8, M.path));
 
-    scene.add(mkPath([[JA.x,JA.z],[JA.x+3,JA.z-8],[AT.x-2,AT.z+4],[AT.x,AT.z]], 1.5, M.road));
-    scene.add(mkPath([[AT.x,AT.z],[AT.x+5,AT.z-3],[GM.x-3,GM.z+2],[GM.x,GM.z]], 1.5, M.road));
-    scene.add(mkPath([[GM.x,GM.z],[GM.x+1,GM.z-4],[ME.x,ME.z+3],[ME.x,ME.z]], 1.2, M.road));
-    scene.add(mkPath([[AT.x,AT.z],[AT.x-5,AT.z-5],[TI.x+4,TI.z+5],[TI.x,TI.z]], 1, M.path));
-    scene.add(mkPath([[AT.x,AT.z],[AT.x-6,AT.z+1],[FH.x+4,FH.z-1],[FH.x,FH.z]], 0.8, M.path));
-    scene.add(mkPath([[FH.x,FH.z],[FH.x-3,FH.z-4],[PL.x+2,PL.z+3],[PL.x,PL.z]], 0.8, M.path));
-    scene.add(mkPath([[TI.x,TI.z],[TI.x-4,TI.z+5],[PL.x+2,PL.z-5],[PL.x,PL.z]], 0.7, M.path));
-
-    // Pond
-    const px=(FH.x+JA.x)/2-3, pz=(FH.z+JA.z)/2;
-    const pondGeo = new THREE.CircleGeometry(4.5, 28);
+    // Pond (mare) - typical feature in forest clearings
+    const px=(FH.x+AT.x)/2-4, pz=(FH.z+AT.z)/2+3;
+    const pondGeo = new THREE.CircleGeometry(3.5, 28);
     pondGeo.rotateX(-Math.PI/2);
     const pond = new THREE.Mesh(pondGeo, M.water);
-    pond.position.set(px, terrH(px,pz)-0.3, pz);
-    pond.scale.set(1.3, 1, 0.8);
+    pond.position.set(px, terrH(px,pz)-0.4, pz);
+    pond.scale.set(1.4, 1, 0.9);
     scene.add(pond);
+    // Small stream/fossé running south from pond
+    scene.add(mkPath([[px, pz], [px+3, pz+8], [px+5, pz+18]], 0.5, M.water));
 
-    // Bushes & flowers
-    for (let i=0; i<55; i++) {
-        const bx=-35+Math.random()*70, bz=-50+Math.random()*95;
+    // ═══════════════════════════════════════════
+    // Agricultural fields (hedgerows visible from aerial)
+    // ═══════════════════════════════════════════
+    // Field boundary hedgerows (tree rows separating fields)
+    const hedgeRows = [
+        [[30, -20], [30, 25]], // north-south hedge
+        [[42, -15], [42, 30]], // parallel hedge
+        [[30, 5], [42, 5]],   // cross hedge
+        [[30, -10], [55, -10]], // northern field edge
+    ];
+    hedgeRows.forEach(pts => {
+        const [x1,z1] = pts[0], [x2,z2] = pts[1];
+        const len = Math.sqrt((x2-x1)**2+(z2-z1)**2);
+        const steps = Math.floor(len / 3);
+        for (let i = 0; i <= steps; i++) {
+            const t = i / Math.max(steps, 1);
+            const hx = x1 + (x2-x1)*t + (Math.random()-0.5)*0.8;
+            const hz = z1 + (z2-z1)*t + (Math.random()-0.5)*0.8;
+            scene.add(mkBush(hx, hz));
+        }
+    });
+    // Field tracks (visible dirt paths between fields)
+    scene.add(mkPath([[30, -20], [30, 25]], 0.6, M.path));
+    scene.add(mkPath([[30, 5], [55, 5]], 0.6, M.path));
+
+    // Bushes in clearing (not in forest or fields)
+    for (let i=0; i<45; i++) {
+        const bx=-10+Math.random()*45, bz=-35+Math.random()*70;
+        if (isForestZone(bx, bz) || isFieldZone(bx, bz)) continue;
         let skip=false;
         for (const p of KML_PLACES) if (Math.sqrt((bx-p.x)**2+(bz-p.z)**2)<5) { skip=true; break; }
         if (!skip) scene.add(mkBush(bx, bz));
     }
-    for (let i=0; i<120; i++) {
-        const fx=-30+Math.random()*65, fz=-45+Math.random()*90;
+    // Flowers in clearing meadow
+    for (let i=0; i<100; i++) {
+        const fx=-10+Math.random()*40, fz=-30+Math.random()*65;
+        if (isForestZone(fx, fz) || isFieldZone(fx, fz)) continue;
+        scene.add(mkFlower(fx, fz));
+    }
+    // Wildflowers along forest edge
+    for (let i=0; i<40; i++) {
+        const fx=-25+Math.random()*50, fz=-45+Math.random()*85;
+        if (!isForestZone(fx, fz)) continue;
+        // Only near forest edge
+        if (isForestZone(fx+4, fz) && isForestZone(fx-4, fz) && isForestZone(fx, fz+4) && isForestZone(fx, fz-4)) continue;
         scene.add(mkFlower(fx, fz));
     }
 
-    // Direction labels
-    scene.add(mkLabel("Autr\u00eaches \u2191", 25, 12, -48, 1.1, '#5a3010'));
-    scene.add(mkLabel("\u2190 Centre \u00e9questre", -40, 12, -10, 1, '#5a3010'));
-    scene.add(mkLabel("Chevillecourt \u2192", 40, 12, -15, 1, '#5a3010'));
-    scene.add(mkLabel("\u2193 Hautebraye", 0, 12, 48, 1.1, '#5a3010'));
+    // Direction labels (matching real geography)
+    scene.add(mkLabel("For\u00eat de Laigue", -45, 15, -15, 1.1, '#2d5a1e'));
+    scene.add(mkLabel("\u2193 Autr\u00eaches", AT.x+5, 12, 58, 1.1, '#5a3010'));
+    scene.add(mkLabel("Chevillecourt \u2192", 45, 12, -15, 1, '#5a3010'));
+    scene.add(mkLabel("\u2190 Compi\u00e8gne", -50, 12, 15, 1, '#5a3010'));
+    scene.add(mkLabel("Champs", 40, 12, 10, 0.85, '#8a7a40'));
 
     // ═══════════════════════════════════════════
     // Clouds (very round, BD style)
