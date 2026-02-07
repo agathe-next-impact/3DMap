@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L'Hermitage et la Forêt - Carte 3D</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #87CEEB; font-family: 'Comic Sans MS', 'Chalkboard SE', cursive; }
+        canvas { display: block; }
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2.2em;
+            color: #4a2c0a;
+            text-shadow: 2px 2px 0 #f4d794, -1px -1px 0 #f4d794, 1px -1px 0 #f4d794, -1px 1px 0 #f4d794;
+            pointer-events: none;
+            z-index: 10;
+            text-align: center;
+            line-height: 1.2;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #4a2c0a;
+            background: rgba(244, 215, 148, 0.85);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            pointer-events: none;
+            z-index: 10;
+            border: 2px solid #c4943a;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5em;
+            color: #4a2c0a;
+            z-index: 20;
+            background: rgba(244, 215, 148, 0.9);
+            padding: 20px 40px;
+            border-radius: 20px;
+            border: 3px solid #c4943a;
+        }
+    </style>
+</head>
+<body>
+    <div id="title">L'Hermitage<br>et la Forêt</div>
+    <div id="controls">Clic gauche: tourner | Molette: zoom | Clic droit: déplacer</div>
+    <div id="loading">Chargement de la carte...</div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ─── Scene Setup ───
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB);
+    scene.fog = new THREE.FogExp2(0xc8e6f5, 0.008);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
+    camera.position.set(0, 55, 65);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, -5);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.maxPolarAngle = Math.PI / 2.2;
+    controls.minDistance = 20;
+    controls.maxDistance = 120;
+
+    // ─── Lighting ───
+    const ambientLight = new THREE.AmbientLight(0xfff5e0, 0.7);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff0d0, 1.8);
+    sunLight.position.set(30, 50, 20);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.left = -60;
+    sunLight.shadow.camera.right = 60;
+    sunLight.shadow.camera.top = 60;
+    sunLight.shadow.camera.bottom = -60;
+    scene.add(sunLight);
+
+    const fillLight = new THREE.DirectionalLight(0xadd8e6, 0.4);
+    fillLight.position.set(-20, 30, -20);
+    scene.add(fillLight);
+
+    // ─── Materials ───
+    const grassMat = new THREE.MeshToonMaterial({ color: 0x5cb85c });
+    const darkGrassMat = new THREE.MeshToonMaterial({ color: 0x3a7a3a });
+    const forestFloorMat = new THREE.MeshToonMaterial({ color: 0x2d5a1e });
+    const pathMat = new THREE.MeshToonMaterial({ color: 0xd4a854 });
+    const roadMat = new THREE.MeshToonMaterial({ color: 0xc4b28a });
+    const waterMat = new THREE.MeshToonMaterial({ color: 0x4a9bd9, transparent: true, opacity: 0.85 });
+    const trunkMat = new THREE.MeshToonMaterial({ color: 0x8B5A2B });
+    const leafMat = new THREE.MeshToonMaterial({ color: 0x2d8a2d });
+    const darkLeafMat = new THREE.MeshToonMaterial({ color: 0x1e6b1e });
+    const lightLeafMat = new THREE.MeshToonMaterial({ color: 0x4CAF50 });
+    const roofMat = new THREE.MeshToonMaterial({ color: 0xcc4444 });
+    const roofBlueMat = new THREE.MeshToonMaterial({ color: 0x4477aa });
+    const roofBrownMat = new THREE.MeshToonMaterial({ color: 0x8B6914 });
+    const wallMat = new THREE.MeshToonMaterial({ color: 0xfff8dc });
+    const wallPinkMat = new THREE.MeshToonMaterial({ color: 0xffe4e1 });
+    const stoneMat = new THREE.MeshToonMaterial({ color: 0xb0a090 });
+    const fenceMat = new THREE.MeshToonMaterial({ color: 0xdeb887 });
+    const fieldMat = new THREE.MeshToonMaterial({ color: 0xc4a03a });
+    const vineMat = new THREE.MeshToonMaterial({ color: 0x6b8e23 });
+
+    // ─── Helper Functions ───
+    function createTerrain() {
+        const geo = new THREE.PlaneGeometry(140, 120, 140, 120);
+        geo.rotateX(-Math.PI / 2);
+        const pos = geo.attributes.position;
+
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const z = pos.getZ(i);
+
+            let y = 0;
+
+            // Forest hill (left side) - elevated area
+            const forestDist = Math.sqrt((x + 25) ** 2 + (z + 5) ** 2);
+            y += Math.max(0, 8 - forestDist * 0.18) * Math.cos(forestDist * 0.08);
+
+            // Central ridge
+            const ridgeDist = Math.abs(x + 5) + Math.abs(z + 10) * 0.3;
+            y += Math.max(0, 4 - ridgeDist * 0.12);
+
+            // Gentle hills
+            y += Math.sin(x * 0.05) * Math.cos(z * 0.06) * 2;
+            y += Math.sin(x * 0.12 + 1) * Math.cos(z * 0.1 + 2) * 0.8;
+
+            // Valley for the pond
+            const pondDist = Math.sqrt((x + 5) ** 2 + (z + 8) ** 2);
+            if (pondDist < 8) {
+                y -= (8 - pondDist) * 0.4;
+            }
+
+            // Flatten village area
+            const villageDist = Math.sqrt((x - 18) ** 2 + (z + 5) ** 2);
+            if (villageDist < 20) {
+                const flatFactor = Math.max(0, 1 - villageDist / 20);
+                y *= (1 - flatFactor * 0.6);
+                y += flatFactor * 1.5;
+            }
+
+            // General slight slope
+            y += z * 0.02 + 1;
+
+            pos.setY(i, y);
+        }
+
+        geo.computeVertexNormals();
+
+        // Vertex colors for terrain variety
+        const colors = new Float32Array(pos.count * 3);
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const z = pos.getZ(i);
+            const y = pos.getY(i);
+
+            let r, g, b;
+
+            // Forest area (left)
+            const inForest = x < -5 && Math.sqrt((x + 25) ** 2 + (z + 5) ** 2) < 35;
+            // Fields area (right-bottom)
+            const inFields = x > 25 && z > 5;
+
+            if (inForest) {
+                r = 0.18 + Math.random() * 0.05;
+                g = 0.35 + Math.random() * 0.08;
+                b = 0.12 + Math.random() * 0.03;
+            } else if (inFields) {
+                r = 0.65 + Math.random() * 0.1;
+                g = 0.6 + Math.random() * 0.05;
+                b = 0.2 + Math.random() * 0.05;
+            } else {
+                r = 0.3 + Math.random() * 0.06;
+                g = 0.62 + Math.random() * 0.1;
+                b = 0.25 + Math.random() * 0.05;
+            }
+
+            colors[i * 3] = r;
+            colors[i * 3 + 1] = g;
+            colors[i * 3 + 2] = b;
+        }
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const terrainMat = new THREE.MeshToonMaterial({ vertexColors: true });
+        const terrain = new THREE.Mesh(geo, terrainMat);
+        terrain.receiveShadow = true;
+        return { terrain, geometry: geo };
+    }
+
+    function getTerrainHeight(geo, x, z) {
+        // Approximate height from terrain formula
+        let y = 0;
+        const forestDist = Math.sqrt((x + 25) ** 2 + (z + 5) ** 2);
+        y += Math.max(0, 8 - forestDist * 0.18) * Math.cos(forestDist * 0.08);
+        const ridgeDist = Math.abs(x + 5) + Math.abs(z + 10) * 0.3;
+        y += Math.max(0, 4 - ridgeDist * 0.12);
+        y += Math.sin(x * 0.05) * Math.cos(z * 0.06) * 2;
+        y += Math.sin(x * 0.12 + 1) * Math.cos(z * 0.1 + 2) * 0.8;
+        const pondDist = Math.sqrt((x + 5) ** 2 + (z + 8) ** 2);
+        if (pondDist < 8) y -= (8 - pondDist) * 0.4;
+        const villageDist = Math.sqrt((x - 18) ** 2 + (z + 5) ** 2);
+        if (villageDist < 20) {
+            const flatFactor = Math.max(0, 1 - villageDist / 20);
+            y *= (1 - flatFactor * 0.6);
+            y += flatFactor * 1.5;
+        }
+        y += z * 0.02 + 1;
+        return y;
+    }
+
+    function createCartoonTree(x, z, height, terrainGeo, type = 'round') {
+        const group = new THREE.Group();
+        const ty = getTerrainHeight(terrainGeo, x, z);
+
+        const trunkH = height * 0.4;
+        const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(height * 0.06, height * 0.09, trunkH, 6),
+            trunkMat
+        );
+        trunk.position.set(0, trunkH / 2, 0);
+        trunk.castShadow = true;
+        group.add(trunk);
+
+        if (type === 'round') {
+            const leafRadius = height * 0.35;
+            const leaves = new THREE.Mesh(
+                new THREE.SphereGeometry(leafRadius, 7, 6),
+                [leafMat, darkLeafMat, lightLeafMat][Math.floor(Math.random() * 3)]
+            );
+            leaves.position.set(0, trunkH + leafRadius * 0.6, 0);
+            leaves.scale.y = 0.85;
+            leaves.castShadow = true;
+            group.add(leaves);
+
+            // Extra leaf blobs for cartoon look
+            for (let i = 0; i < 3; i++) {
+                const angle = (i / 3) * Math.PI * 2 + Math.random() * 0.5;
+                const blobR = leafRadius * 0.55;
+                const blob = new THREE.Mesh(
+                    new THREE.SphereGeometry(blobR, 6, 5),
+                    [leafMat, darkLeafMat, lightLeafMat][Math.floor(Math.random() * 3)]
+                );
+                blob.position.set(
+                    Math.cos(angle) * leafRadius * 0.6,
+                    trunkH + leafRadius * 0.3,
+                    Math.sin(angle) * leafRadius * 0.6
+                );
+                blob.castShadow = true;
+                group.add(blob);
+            }
+        } else if (type === 'pine') {
+            for (let j = 0; j < 3; j++) {
+                const coneR = height * (0.35 - j * 0.08);
+                const coneH = height * 0.3;
+                const cone = new THREE.Mesh(
+                    new THREE.ConeGeometry(coneR, coneH, 6),
+                    darkLeafMat
+                );
+                cone.position.set(0, trunkH + j * coneH * 0.55 + coneH * 0.3, 0);
+                cone.castShadow = true;
+                group.add(cone);
+            }
+        }
+
+        group.position.set(x, ty, z);
+        group.rotation.y = Math.random() * Math.PI * 2;
+
+        // Slight random lean for cartoon feel
+        group.rotation.x = (Math.random() - 0.5) * 0.08;
+        group.rotation.z = (Math.random() - 0.5) * 0.08;
+
+        return group;
+    }
+
+    function createHouse(x, z, terrainGeo, opts = {}) {
+        const group = new THREE.Group();
+        const ty = getTerrainHeight(terrainGeo, x, z);
+        const w = opts.width || 2.5 + Math.random() * 1.5;
+        const h = opts.height || 2 + Math.random() * 1;
+        const d = opts.depth || 2.5 + Math.random() * 1.5;
+        const roofColor = opts.roofMat || [roofMat, roofBlueMat, roofBrownMat][Math.floor(Math.random() * 3)];
+        const wallColor = opts.wallMat || [wallMat, wallPinkMat][Math.floor(Math.random() * 2)];
+
+        // Walls
+        const walls = new THREE.Mesh(
+            new THREE.BoxGeometry(w, h, d),
+            wallColor
+        );
+        walls.position.y = h / 2;
+        walls.castShadow = true;
+        walls.receiveShadow = true;
+        group.add(walls);
+
+        // Roof
+        const roofH = h * 0.7;
+        const roofGeo = new THREE.ConeGeometry(Math.max(w, d) * 0.75, roofH, 4);
+        const roof = new THREE.Mesh(roofGeo, roofColor);
+        roof.position.y = h + roofH / 2;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        group.add(roof);
+
+        // Door
+        const door = new THREE.Mesh(
+            new THREE.BoxGeometry(w * 0.25, h * 0.45, 0.1),
+            new THREE.MeshToonMaterial({ color: 0x6b3a1f })
+        );
+        door.position.set(0, h * 0.22, d / 2 + 0.05);
+        group.add(door);
+
+        // Windows
+        const winMat = new THREE.MeshToonMaterial({ color: 0xadd8e6 });
+        [-1, 1].forEach(side => {
+            const win = new THREE.Mesh(
+                new THREE.BoxGeometry(w * 0.18, h * 0.2, 0.1),
+                winMat
+            );
+            win.position.set(side * w * 0.3, h * 0.6, d / 2 + 0.05);
+            group.add(win);
+        });
+
+        // Chimney
+        if (Math.random() > 0.4) {
+            const chimney = new THREE.Mesh(
+                new THREE.BoxGeometry(0.5, roofH * 0.8, 0.5),
+                stoneMat
+            );
+            chimney.position.set(w * 0.25, h + roofH * 0.5, 0);
+            chimney.castShadow = true;
+            group.add(chimney);
+        }
+
+        group.position.set(x, ty, z);
+        group.rotation.y = opts.rotation || Math.random() * Math.PI * 2;
+        return group;
+    }
+
+    function createPath(points, width, terrainGeo) {
+        const group = new THREE.Group();
+        for (let i = 0; i < points.length - 1; i++) {
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            const dx = p2[0] - p1[0];
+            const dz = p2[1] - p1[1];
+            const len = Math.sqrt(dx * dx + dz * dz);
+            const mx = (p1[0] + p2[0]) / 2;
+            const mz = (p1[1] + p2[1]) / 2;
+            const my = getTerrainHeight(terrainGeo, mx, mz) + 0.05;
+
+            const seg = new THREE.Mesh(
+                new THREE.BoxGeometry(len, 0.12, width),
+                pathMat
+            );
+            seg.position.set(mx, my, mz);
+            seg.rotation.y = -Math.atan2(dz, dx);
+            seg.receiveShadow = true;
+            group.add(seg);
+        }
+        return group;
+    }
+
+    function createRoad(points, width, terrainGeo) {
+        const group = new THREE.Group();
+        for (let i = 0; i < points.length - 1; i++) {
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            const dx = p2[0] - p1[0];
+            const dz = p2[1] - p1[1];
+            const len = Math.sqrt(dx * dx + dz * dz);
+            const mx = (p1[0] + p2[0]) / 2;
+            const mz = (p1[1] + p2[1]) / 2;
+            const my = getTerrainHeight(terrainGeo, mx, mz) + 0.08;
+
+            const seg = new THREE.Mesh(
+                new THREE.BoxGeometry(len, 0.15, width),
+                roadMat
+            );
+            seg.position.set(mx, my, mz);
+            seg.rotation.y = -Math.atan2(dz, dx);
+            seg.receiveShadow = true;
+            group.add(seg);
+        }
+        return group;
+    }
+
+    function createPond(x, z, rx, rz, terrainGeo) {
+        const ty = getTerrainHeight(terrainGeo, x, z) - 0.3;
+        const pond = new THREE.Mesh(
+            new THREE.EllipseCurve
+        );
+        // Use a circle geometry flattened
+        const pondGeo = new THREE.CircleGeometry(rx, 24);
+        pondGeo.rotateX(-Math.PI / 2);
+        const pondMesh = new THREE.Mesh(pondGeo, waterMat);
+        pondMesh.position.set(x, ty, z);
+        pondMesh.scale.z = rz / rx;
+        return pondMesh;
+    }
+
+    function createBush(x, z, terrainGeo) {
+        const ty = getTerrainHeight(terrainGeo, x, z);
+        const group = new THREE.Group();
+        const count = 2 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i++) {
+            const r = 0.4 + Math.random() * 0.4;
+            const bush = new THREE.Mesh(
+                new THREE.SphereGeometry(r, 6, 5),
+                [leafMat, darkLeafMat, lightLeafMat][Math.floor(Math.random() * 3)]
+            );
+            bush.position.set(
+                (Math.random() - 0.5) * 1,
+                r * 0.7,
+                (Math.random() - 0.5) * 1
+            );
+            bush.castShadow = true;
+            group.add(bush);
+        }
+        group.position.set(x, ty, z);
+        return group;
+    }
+
+    function createFlower(x, z, terrainGeo) {
+        const ty = getTerrainHeight(terrainGeo, x, z);
+        const group = new THREE.Group();
+        const colors = [0xff6b9d, 0xffb347, 0xff6b6b, 0xdda0dd, 0xffd700, 0xff69b4];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+
+        const stem = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.03, 0.03, 0.4, 4),
+            new THREE.MeshToonMaterial({ color: 0x228B22 })
+        );
+        stem.position.y = 0.2;
+        group.add(stem);
+
+        const petals = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15, 6, 5),
+            new THREE.MeshToonMaterial({ color })
+        );
+        petals.position.y = 0.45;
+        petals.scale.y = 0.6;
+        group.add(petals);
+
+        group.position.set(x, ty, z);
+        return group;
+    }
+
+    function createFence(points, terrainGeo) {
+        const group = new THREE.Group();
+        for (let i = 0; i < points.length - 1; i++) {
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            const dx = p2[0] - p1[0];
+            const dz = p2[1] - p1[1];
+            const len = Math.sqrt(dx * dx + dz * dz);
+            const steps = Math.ceil(len / 1.5);
+
+            for (let s = 0; s <= steps; s++) {
+                const t = s / steps;
+                const fx = p1[0] + dx * t;
+                const fz = p1[1] + dz * t;
+                const fy = getTerrainHeight(terrainGeo, fx, fz);
+
+                const post = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.12, 0.8, 0.12),
+                    fenceMat
+                );
+                post.position.set(fx, fy + 0.4, fz);
+                post.castShadow = true;
+                group.add(post);
+            }
+
+            // Horizontal bar
+            const mx = (p1[0] + p2[0]) / 2;
+            const mz = (p1[1] + p2[1]) / 2;
+            const my = getTerrainHeight(terrainGeo, mx, mz);
+            const bar = new THREE.Mesh(
+                new THREE.BoxGeometry(len, 0.08, 0.08),
+                fenceMat
+            );
+            bar.position.set(mx, my + 0.55, mz);
+            bar.rotation.y = -Math.atan2(dz, dx);
+            group.add(bar);
+
+            const bar2 = new THREE.Mesh(
+                new THREE.BoxGeometry(len, 0.08, 0.08),
+                fenceMat
+            );
+            bar2.position.set(mx, my + 0.25, mz);
+            bar2.rotation.y = -Math.atan2(dz, dx);
+            group.add(bar2);
+        }
+        return group;
+    }
+
+    function createFieldRows(cx, cz, w, h, rotation, terrainGeo) {
+        const group = new THREE.Group();
+        const rows = Math.floor(h / 0.8);
+        for (let r = 0; r < rows; r++) {
+            const rz = -h / 2 + r * (h / rows);
+            const row = new THREE.Mesh(
+                new THREE.BoxGeometry(w * 0.9, 0.3, 0.3),
+                vineMat
+            );
+            const ry = getTerrainHeight(terrainGeo, cx, cz + rz);
+            row.position.set(0, 0.15, rz);
+            group.add(row);
+        }
+        const ty = getTerrainHeight(terrainGeo, cx, cz);
+        group.position.set(cx, ty, cz);
+        group.rotation.y = rotation || 0;
+        return group;
+    }
+
+    function createSignpost(x, z, text, terrainGeo, rotation = 0) {
+        const group = new THREE.Group();
+        const ty = getTerrainHeight(terrainGeo, x, z);
+
+        const post = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.08, 2, 6),
+            trunkMat
+        );
+        post.position.y = 1;
+        group.add(post);
+
+        const sign = new THREE.Mesh(
+            new THREE.BoxGeometry(2.5, 0.6, 0.1),
+            new THREE.MeshToonMaterial({ color: 0xfff8dc })
+        );
+        sign.position.set(0.5, 1.8, 0);
+        group.add(sign);
+
+        // Arrow
+        const arrow = new THREE.Mesh(
+            new THREE.ConeGeometry(0.3, 0.5, 3),
+            new THREE.MeshToonMaterial({ color: 0x8B5A2B })
+        );
+        arrow.position.set(1.9, 1.8, 0);
+        arrow.rotation.z = -Math.PI / 2;
+        group.add(arrow);
+
+        group.position.set(x, ty, z);
+        group.rotation.y = rotation;
+        return group;
+    }
+
+    function create3DText(text, x, y, z, size, color) {
+        // Use a sprite for text labels
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 512;
+        canvas.height = 128;
+        ctx.clearRect(0, 0, 512, 128);
+
+        ctx.font = `bold ${Math.floor(size * 30)}px "Comic Sans MS", cursive`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Outline
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 5;
+        ctx.strokeText(text, 256, 64);
+
+        // Fill
+        ctx.fillStyle = color || '#4a2c0a';
+        ctx.fillText(text, 256, 64);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.position.set(x, y, z);
+        sprite.scale.set(size * 8, size * 2, 1);
+        return sprite;
+    }
+
+    // ─── Build the Scene ───
+    const { terrain, geometry: terrainGeo } = createTerrain();
+    scene.add(terrain);
+
+    // ─── Pond ───
+    const pond = createPond(-5, -8, 5, 3.5, terrainGeo);
+    scene.add(pond);
+
+    // Small stream
+    const streamPts = [[-5, -4], [-7, -1], [-10, 2], [-14, 4], [-18, 5]];
+    scene.add(createPath(streamPts, 0.8, terrainGeo));
+    // Override with water material
+    const stream = createPath(streamPts, 0.7, terrainGeo);
+    stream.children.forEach(c => c.material = waterMat);
+    stream.children.forEach(c => c.position.y += 0.02);
+    scene.add(stream);
+
+    // ─── Forest Trees (left side) ───
+    const forestGroup = new THREE.Group();
+    for (let i = 0; i < 200; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * 28;
+        const fx = -25 + Math.cos(angle) * dist;
+        const fz = -5 + Math.sin(angle) * dist;
+
+        // Keep trees within forest boundary
+        if (fx > 0 || Math.sqrt((fx + 25) ** 2 + (fz + 5) ** 2) > 30) continue;
+        // Avoid pond area
+        if (Math.sqrt((fx + 5) ** 2 + (fz + 8) ** 2) < 7) continue;
+
+        const h = 2.5 + Math.random() * 3;
+        const type = Math.random() > 0.3 ? 'round' : 'pine';
+        forestGroup.add(createCartoonTree(fx, fz, h, terrainGeo, type));
+    }
+    scene.add(forestGroup);
+
+    // ─── Scattered trees near village ───
+    const villageTrees = [
+        [8, -15], [12, -18], [5, 5], [15, 8],
+        [25, -15], [30, -10], [10, -8], [20, 5],
+        [-2, -20], [0, 5], [22, -20], [32, 2]
+    ];
+    villageTrees.forEach(([x, z]) => {
+        scene.add(createCartoonTree(x, z, 2 + Math.random() * 2, terrainGeo, 'round'));
+    });
+
+    // ─── Main Paths & Roads ───
+    // Main road through village
+    const mainRoad = [
+        [-10, -25], [-5, -20], [0, -15], [5, -12],
+        [10, -10], [15, -8], [20, -6], [25, -5],
+        [30, -4], [35, -3], [40, -2]
+    ];
+    scene.add(createRoad(mainRoad, 2, terrainGeo));
+
+    // Road to Autrêches (north)
+    const roadNorth = [[20, -6], [22, -12], [25, -18], [28, -25], [30, -30]];
+    scene.add(createRoad(roadNorth, 1.8, terrainGeo));
+
+    // Road to Hautebraye (south)
+    const roadSouth = [[5, -12], [3, -5], [0, 2], [-2, 10], [-5, 18], [-8, 25]];
+    scene.add(createRoad(roadSouth, 1.5, terrainGeo));
+
+    // Forest paths
+    const forestPath1 = [
+        [-5, -12], [-10, -10], [-15, -8], [-20, -5],
+        [-25, -2], [-30, 0], [-35, 2]
+    ];
+    scene.add(createPath(forestPath1, 1, terrainGeo));
+
+    const forestPath2 = [
+        [-15, -8], [-18, -12], [-22, -15], [-28, -18],
+        [-32, -15], [-35, -10]
+    ];
+    scene.add(createPath(forestPath2, 0.8, terrainGeo));
+
+    const forestPath3 = [
+        [-20, -5], [-22, 2], [-25, 8], [-30, 12], [-35, 10]
+    ];
+    scene.add(createPath(forestPath3, 0.8, terrainGeo));
+
+    // Path to Centre équestre
+    const pathEquestre = [[-35, 2], [-42, 5], [-48, 8], [-55, 10]];
+    scene.add(createPath(pathEquestre, 1.2, terrainGeo));
+
+    // ─── Village Houses (L'Hermitage) ───
+    const houses = [
+        { x: 12, z: -6, rotation: 0.3, roofMat: roofMat },
+        { x: 16, z: -4, rotation: -0.2, roofMat: roofBlueMat },
+        { x: 20, z: -3, rotation: 0.5, roofMat: roofBrownMat },
+        { x: 14, z: -2, rotation: -0.4, roofMat: roofMat },
+        { x: 18, z: -1, rotation: 0.1, roofMat: roofBlueMat },
+        { x: 22, z: -1, rotation: -0.3, roofMat: roofMat },
+        { x: 10, z: 0, rotation: 0.6, roofMat: roofBrownMat },
+        { x: 25, z: -8, rotation: -0.1, roofMat: roofBlueMat },
+        { x: 28, z: -6, rotation: 0.4, roofMat: roofMat },
+        // Isolated house (bottom center, like on the map)
+        { x: 8, z: 8, rotation: 0.2, roofMat: roofBrownMat, width: 3.5, height: 2.5 },
+    ];
+    houses.forEach(h => {
+        scene.add(createHouse(h.x, h.z, terrainGeo, h));
+    });
+
+    // ─── Centre Équestre (horse riding center) ───
+    // Large building
+    const stable = createHouse(-48, 8, terrainGeo, {
+        width: 5, height: 2.5, depth: 8, roofMat: roofBrownMat, wallMat: wallMat, rotation: 0.3
+    });
+    scene.add(stable);
+
+    // Paddock fence
+    scene.add(createFence([
+        [-52, 4], [-44, 2], [-42, 6], [-44, 12], [-52, 14], [-56, 10], [-52, 4]
+    ], terrainGeo));
+
+    // ─── Fields near Chevillecourt ───
+    scene.add(createFieldRows(35, 5, 8, 10, 0.2, terrainGeo));
+    scene.add(createFieldRows(42, 2, 6, 8, -0.1, terrainGeo));
+    scene.add(createFieldRows(38, 12, 7, 6, 0.3, terrainGeo));
+
+    // ─── Bushes & Flowers ───
+    for (let i = 0; i < 40; i++) {
+        const bx = -5 + Math.random() * 50;
+        const bz = -25 + Math.random() * 50;
+        // Avoid pond and buildings
+        if (Math.sqrt((bx + 5) ** 2 + (bz + 8) ** 2) < 8) continue;
+        scene.add(createBush(bx, bz, terrainGeo));
+    }
+
+    for (let i = 0; i < 80; i++) {
+        const fx = -10 + Math.random() * 45;
+        const fz = -20 + Math.random() * 40;
+        if (Math.sqrt((fx + 5) ** 2 + (fz + 8) ** 2) < 7) continue;
+        scene.add(createFlower(fx, fz, terrainGeo));
+    }
+
+    // ─── Signposts ───
+    scene.add(createSignpost(30, -28, 'Autrêches', terrainGeo, -0.5));
+    scene.add(createSignpost(38, -1, 'Chevillecourt', terrainGeo, 0));
+    scene.add(createSignpost(-7, 22, 'Hautebraye', terrainGeo, 2.5));
+    scene.add(createSignpost(-50, 6, 'Centre équestre', terrainGeo, Math.PI));
+
+    // ─── Text Labels ───
+    scene.add(create3DText("L'Hermitage", 16, 10, -5, 1.5, '#4a2c0a'));
+    scene.add(create3DText("La Forêt", -25, 14, -5, 1.3, '#1e4d1e'));
+    scene.add(create3DText("Autrêches →", 30, 8, -30, 1, '#6b3a1f'));
+    scene.add(create3DText("← Centre équestre", -48, 8, 16, 0.9, '#6b3a1f'));
+    scene.add(create3DText("Chevillecourt →", 38, 8, 5, 1, '#6b3a1f'));
+    scene.add(create3DText("↓ Hautebraye", -6, 8, 24, 1, '#6b3a1f'));
+
+    // ─── Clouds ───
+    function createCloud(x, y, z) {
+        const group = new THREE.Group();
+        const cloudMat = new THREE.MeshToonMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
+        const parts = 4 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < parts; i++) {
+            const r = 1.5 + Math.random() * 2;
+            const sphere = new THREE.Mesh(
+                new THREE.SphereGeometry(r, 7, 6),
+                cloudMat
+            );
+            sphere.position.set(
+                (Math.random() - 0.5) * 4,
+                (Math.random() - 0.5) * 1,
+                (Math.random() - 0.5) * 2
+            );
+            sphere.scale.y = 0.5;
+            group.add(sphere);
+        }
+        group.position.set(x, y, z);
+        return group;
+    }
+
+    const clouds = [];
+    for (let i = 0; i < 8; i++) {
+        const cloud = createCloud(
+            -50 + Math.random() * 100,
+            30 + Math.random() * 15,
+            -40 + Math.random() * 60
+        );
+        clouds.push(cloud);
+        scene.add(cloud);
+    }
+
+    // ─── Decorative border ───
+    const borderGeo = new THREE.RingGeometry(68, 70, 64);
+    borderGeo.rotateX(-Math.PI / 2);
+    const borderMesh = new THREE.Mesh(borderGeo, new THREE.MeshToonMaterial({ color: 0x8B5A2B, side: THREE.DoubleSide }));
+    borderMesh.position.y = 0.1;
+    scene.add(borderMesh);
+
+    // ─── Animation ───
+    document.getElementById('loading').style.display = 'none';
+
+    let time = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        time += 0.005;
+
+        // Animate clouds
+        clouds.forEach((cloud, i) => {
+            cloud.position.x += 0.01 + i * 0.002;
+            if (cloud.position.x > 60) cloud.position.x = -60;
+        });
+
+        // Gentle water animation
+        if (pond) {
+            pond.material.opacity = 0.8 + Math.sin(time * 3) * 0.05;
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // ─── Resize ───
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    </script>
+</body>
+</html>
