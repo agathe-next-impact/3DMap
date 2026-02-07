@@ -416,10 +416,6 @@
 
     function createPond(x, z, rx, rz, terrainGeo) {
         const ty = getTerrainHeight(terrainGeo, x, z) - 0.3;
-        const pond = new THREE.Mesh(
-            new THREE.EllipseCurve
-        );
-        // Use a circle geometry flattened
         const pondGeo = new THREE.CircleGeometry(rx, 24);
         pondGeo.rotateX(-Math.PI / 2);
         const pondMesh = new THREE.Mesh(pondGeo, waterMat);
