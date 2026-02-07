@@ -3,68 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>L'Hermitage et la Forêt - Carte 3D</title>
+    <title>L'Hermitage et la For&ecirc;t - Carte 3D</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { overflow: hidden; background: #87CEEB; font-family: 'Comic Sans MS', 'Chalkboard SE', cursive; }
         canvas { display: block; }
         #title {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 2.2em;
-            color: #4a2c0a;
-            text-shadow: 2px 2px 0 #f4d794, -1px -1px 0 #f4d794, 1px -1px 0 #f4d794, -1px 1px 0 #f4d794;
-            pointer-events: none;
-            z-index: 10;
-            text-align: center;
-            line-height: 1.2;
+            position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+            font-size: 2.2em; color: #2a1a00;
+            text-shadow: 3px 3px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 0 3px 0 #fff, 3px 0 0 #fff;
+            pointer-events: none; z-index: 10; text-align: center; line-height: 1.15;
+            letter-spacing: 1px;
         }
         #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #4a2c0a;
-            background: rgba(244, 215, 148, 0.85);
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            pointer-events: none;
-            z-index: 10;
-            border: 2px solid #c4943a;
+            position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+            color: #2a1a00; background: rgba(255,255,255,0.88); padding: 7px 18px;
+            border-radius: 20px; font-size: 0.85em; pointer-events: none; z-index: 10;
+            border: 2.5px solid #2a1a00;
         }
         #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 1.5em;
-            color: #4a2c0a;
-            z-index: 20;
-            background: rgba(244, 215, 148, 0.9);
-            padding: 20px 40px;
-            border-radius: 20px;
-            border: 3px solid #c4943a;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            font-size: 1.5em; color: #2a1a00; z-index: 20;
+            background: #fff; padding: 20px 40px; border-radius: 22px; border: 3px solid #2a1a00;
         }
         #tooltip {
-            position: absolute;
-            display: none;
-            background: rgba(255, 248, 220, 0.95);
-            color: #4a2c0a;
-            padding: 8px 16px;
-            border-radius: 12px;
-            border: 2px solid #c4943a;
-            font-size: 1em;
-            pointer-events: none;
-            z-index: 15;
-            box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+            position: absolute; display: none; background: #fff; color: #2a1a00;
+            padding: 6px 14px; border-radius: 14px; border: 2.5px solid #2a1a00;
+            font-size: 0.95em; pointer-events: none; z-index: 15;
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.15);
         }
     </style>
 </head>
 <body>
-    <div id="title">L'Hermitage<br>et la Forêt</div>
+    <div id="title">L'Hermitage<br>et la For&ecirc;t</div>
     <div id="controls">Clic gauche: tourner | Molette: zoom | Clic droit: d&eacute;placer</div>
     <div id="loading">Chargement de la carte...</div>
     <div id="tooltip"></div>
@@ -81,10 +52,55 @@
     <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
-    // ═══════════════════════════════════════════════
-    // KML GPS Data → 3D Coordinates
-    // ═══════════════════════════════════════════════
+    // ═══════════════════════════════════════════
+    // BD-style outline shader (Sobel edge detect)
+    // ═══════════════════════════════════════════
+    const OutlineShader = {
+        uniforms: {
+            tDiffuse: { value: null },
+            resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+            outlineColor: { value: new THREE.Vector3(0.12, 0.08, 0.0) },
+            thickness: { value: 1.4 },
+        },
+        vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+        fragmentShader: `
+            uniform sampler2D tDiffuse;
+            uniform vec2 resolution;
+            uniform vec3 outlineColor;
+            uniform float thickness;
+            varying vec2 vUv;
+
+            float luminance(vec4 c){ return dot(c.rgb, vec3(0.299,0.587,0.114)); }
+
+            void main(){
+                vec2 texel = thickness / resolution;
+                float tl = luminance(texture2D(tDiffuse, vUv + vec2(-texel.x, texel.y)));
+                float t  = luminance(texture2D(tDiffuse, vUv + vec2(0.0, texel.y)));
+                float tr = luminance(texture2D(tDiffuse, vUv + vec2(texel.x, texel.y)));
+                float l  = luminance(texture2D(tDiffuse, vUv + vec2(-texel.x, 0.0)));
+                float r  = luminance(texture2D(tDiffuse, vUv + vec2(texel.x, 0.0)));
+                float bl = luminance(texture2D(tDiffuse, vUv + vec2(-texel.x,-texel.y)));
+                float b  = luminance(texture2D(tDiffuse, vUv + vec2(0.0,-texel.y)));
+                float br = luminance(texture2D(tDiffuse, vUv + vec2(texel.x,-texel.y)));
+
+                float gx = tl + 2.0*l + bl - tr - 2.0*r - br;
+                float gy = tl + 2.0*t + tr - bl - 2.0*b - br;
+                float edge = sqrt(gx*gx + gy*gy);
+
+                float strength = smoothstep(0.05, 0.25, edge);
+                vec4 color = texture2D(tDiffuse, vUv);
+                gl_FragColor = vec4(mix(color.rgb, outlineColor, strength * 0.92), color.a);
+            }
+        `
+    };
+
+    // ═══════════════════════════════════════════
+    // KML GPS Data
+    // ═══════════════════════════════════════════
     const KML_PLACES = [
         { name: "Les jardins de l'Hermitage", lon: 3.1283726759185826, lat: 49.435474936916904, type: "garden" },
         { name: "Les ateliers", lon: 3.1288569554447894, lat: 49.437065074302836, type: "workshop" },
@@ -95,44 +111,33 @@
         { name: "La maison dans la for\u00eat", lon: 3.127281101499329, lat: 49.43692220017425, type: "forest_house" },
     ];
 
-    // GPS → 3D conversion
-    const CENTER_LON = 3.12825;
-    const CENTER_LAT = 49.43695;
-    const METER_PER_DEG_LON = 72430; // at latitude ~49.4
-    const METER_PER_DEG_LAT = 111000;
-    const SCALE = 0.22; // meters to 3D units
+    const CL = 3.12825, CA = 49.43695, ML = 72430, MA = 111000, SC = 0.22;
+    function gps(lon, lat) { return { x: (lon-CL)*ML*SC, z: -(lat-CA)*MA*SC }; }
+    KML_PLACES.forEach(p => { const c = gps(p.lon, p.lat); p.x = c.x; p.z = c.z; });
 
-    function gpsTo3D(lon, lat) {
-        const dx = (lon - CENTER_LON) * METER_PER_DEG_LON;
-        const dz = (lat - CENTER_LAT) * METER_PER_DEG_LAT;
-        return { x: dx * SCALE, z: -dz * SCALE };
-    }
-
-    // Pre-compute 3D positions for all KML places
-    KML_PLACES.forEach(p => {
-        const pos = gpsTo3D(p.lon, p.lat);
-        p.x = pos.x;
-        p.z = pos.z;
-    });
-
-    // ═══════════════════════════════════════════════
-    // Scene Setup
-    // ═══════════════════════════════════════════════
+    // ═══════════════════════════════════════════
+    // Scene
+    // ═══════════════════════════════════════════
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.FogExp2(0xc8e6f5, 0.006);
+    scene.background = new THREE.Color(0xd4eef7);
+    scene.fog = new THREE.FogExp2(0xd4eef7, 0.005);
 
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
-    camera.position.set(0, 60, 70);
+    const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 500);
+    camera.position.set(5, 55, 72);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMapping = THREE.NoToneMapping;
     document.body.appendChild(renderer.domElement);
+
+    // Post-processing: BD outlines
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const outlinePass = new ShaderPass(OutlineShader);
+    composer.addPass(outlinePass);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 0, 0);
@@ -142,1163 +147,758 @@
     controls.minDistance = 15;
     controls.maxDistance = 130;
 
-    // ═══════════════════════════════════════════════
-    // Lighting
-    // ═══════════════════════════════════════════════
-    scene.add(new THREE.AmbientLight(0xfff5e0, 0.7));
+    // ═══════════════════════════════════════════
+    // Lighting (bright, flat BD style)
+    // ═══════════════════════════════════════════
+    scene.add(new THREE.AmbientLight(0xffffff, 0.85));
 
-    const sunLight = new THREE.DirectionalLight(0xfff0d0, 1.8);
-    sunLight.position.set(30, 50, 20);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(2048, 2048);
-    sunLight.shadow.camera.left = -70;
-    sunLight.shadow.camera.right = 70;
-    sunLight.shadow.camera.top = 70;
-    sunLight.shadow.camera.bottom = -70;
-    scene.add(sunLight);
+    const sun = new THREE.DirectionalLight(0xfff5e0, 1.2);
+    sun.position.set(25, 45, 20);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
+    sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70;
+    scene.add(sun);
 
-    const fillLight = new THREE.DirectionalLight(0xadd8e6, 0.4);
-    fillLight.position.set(-20, 30, -20);
-    scene.add(fillLight);
+    const fill = new THREE.DirectionalLight(0xc0d8ff, 0.5);
+    fill.position.set(-20, 30, -20);
+    scene.add(fill);
 
-    // ═══════════════════════════════════════════════
-    // Materials (Toon / Cartoon style)
-    // ═══════════════════════════════════════════════
-    const pathMat = new THREE.MeshToonMaterial({ color: 0xd4a854 });
-    const roadMat = new THREE.MeshToonMaterial({ color: 0xc4b28a });
-    const waterMat = new THREE.MeshToonMaterial({ color: 0x4a9bd9, transparent: true, opacity: 0.85 });
-    const trunkMat = new THREE.MeshToonMaterial({ color: 0x8B5A2B });
-    const leafMat = new THREE.MeshToonMaterial({ color: 0x2d8a2d });
-    const darkLeafMat = new THREE.MeshToonMaterial({ color: 0x1e6b1e });
-    const lightLeafMat = new THREE.MeshToonMaterial({ color: 0x4CAF50 });
-    const roofMat = new THREE.MeshToonMaterial({ color: 0xcc4444 });
-    const roofBlueMat = new THREE.MeshToonMaterial({ color: 0x4477aa });
-    const roofBrownMat = new THREE.MeshToonMaterial({ color: 0x8B6914 });
-    const wallMat = new THREE.MeshToonMaterial({ color: 0xfff8dc });
-    const wallPinkMat = new THREE.MeshToonMaterial({ color: 0xffe4e1 });
-    const stoneMat = new THREE.MeshToonMaterial({ color: 0xb0a090 });
-    const fenceMat = new THREE.MeshToonMaterial({ color: 0xdeb887 });
-    const canvasMat = new THREE.MeshToonMaterial({ color: 0xf5e6c8 });
-    const tipiPoleMat = new THREE.MeshToonMaterial({ color: 0xa0784a });
-    const flowerColors = [0xff6b9d, 0xffb347, 0xff6b6b, 0xdda0dd, 0xffd700, 0xff69b4, 0x87ceeb];
+    // ═══════════════════════════════════════════
+    // Toon gradient (2 steps = flat BD shading)
+    // ═══════════════════════════════════════════
+    const toonTex = (() => {
+        const c = document.createElement('canvas');
+        c.width = 4; c.height = 1;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#888'; ctx.fillRect(0,0,2,1);
+        ctx.fillStyle = '#fff'; ctx.fillRect(2,0,2,1);
+        const t = new THREE.CanvasTexture(c);
+        t.minFilter = THREE.NearestFilter;
+        t.magFilter = THREE.NearestFilter;
+        return t;
+    })();
 
-    // ═══════════════════════════════════════════════
-    // Terrain
-    // ═══════════════════════════════════════════════
-    function terrainHeight(x, z) {
+    function toon(color) {
+        return new THREE.MeshToonMaterial({ color, gradientMap: toonTex });
+    }
+
+    // BD palette - bright saturated colors
+    const M = {
+        grass1: toon(0x5dbd3a), grass2: toon(0x3a9a22), grass3: toon(0x7dd55a),
+        trunk: toon(0x7a4a20), leaf: toon(0x2eaa2e), darkLeaf: toon(0x1a7a1a), lightLeaf: toon(0x55cc44),
+        roofRed: toon(0xe83030), roofBlue: toon(0x3388cc), roofBrown: toon(0xa06820),
+        wall: toon(0xfff4d4), wallPink: toon(0xffd4cc), wallBeige: toon(0xf0ddb8),
+        stone: toon(0xb0a090), fence: toon(0xe0c488), path: toon(0xe0c070), road: toon(0xd4c8a0),
+        water: toon(0x44aadd), canvas: toon(0xf8ecd0), doorBrown: toon(0x5a3010),
+        white: toon(0xffffff),
+    };
+    M.water.transparent = true; M.water.opacity = 0.88;
+
+    // ═══════════════════════════════════════════
+    // Terrain height
+    // ═══════════════════════════════════════════
+    const PL = KML_PLACES.find(p=>p.type==='plateau');
+    const FH = KML_PLACES.find(p=>p.type==='forest_house');
+    const FCX = (PL.x+FH.x)/2, FCZ = (PL.z+FH.z)/2;
+    const GM = KML_PLACES.find(p=>p.type==='grande_maison');
+    const JA = KML_PLACES.find(p=>p.type==='garden');
+    const TI = KML_PLACES.find(p=>p.type==='tipis');
+
+    function terrH(x, z) {
         let y = 0;
-
-        // Forest plateau hill (west side, where "Le plateau" and "Maison forêt" are)
-        const plateauPlace = KML_PLACES.find(p => p.type === 'plateau');
-        const forestHousePlace = KML_PLACES.find(p => p.type === 'forest_house');
-        const forestCenterX = (plateauPlace.x + forestHousePlace.x) / 2;
-        const forestCenterZ = (plateauPlace.z + forestHousePlace.z) / 2;
-        const forestDist = Math.sqrt((x - forestCenterX) ** 2 + (z - forestCenterZ) ** 2);
-        y += Math.max(0, 7 - forestDist * 0.15) * (0.7 + 0.3 * Math.cos(forestDist * 0.08));
-
-        // Slight ridge connecting forest to tipis area
-        const tipisPlace = KML_PLACES.find(p => p.type === 'tipis');
-        const ridgeDist = Math.abs(z - tipisPlace.z) * 0.5 + Math.abs(x - tipisPlace.x) * 0.3;
-        y += Math.max(0, 3 - ridgeDist * 0.1);
-
-        // Valley for jardins area (south)
-        const jardinPlace = KML_PLACES.find(p => p.type === 'garden');
-        const jardinDist = Math.sqrt((x - jardinPlace.x) ** 2 + (z - jardinPlace.z) ** 2);
-        if (jardinDist < 12) {
-            y -= (12 - jardinDist) * 0.15;
-        }
-
-        // Gentle rolling hills
-        y += Math.sin(x * 0.06) * Math.cos(z * 0.05) * 1.8;
-        y += Math.sin(x * 0.13 + 1) * Math.cos(z * 0.11 + 2) * 0.6;
-
-        // Flatten village / buildings area (east side)
-        const grandeMaisonPlace = KML_PLACES.find(p => p.type === 'grande_maison');
-        const villageDist = Math.sqrt((x - grandeMaisonPlace.x) ** 2 + (z - grandeMaisonPlace.z) ** 2);
-        if (villageDist < 18) {
-            const f = Math.max(0, 1 - villageDist / 18);
-            y *= (1 - f * 0.5);
-            y += f * 2;
-        }
-
-        // Base elevation
-        y += 1.5;
-        return y;
+        const fd = Math.sqrt((x-FCX)**2 + (z-FCZ)**2);
+        y += Math.max(0, 7 - fd*0.15) * (0.7 + 0.3*Math.cos(fd*0.08));
+        const rd = Math.abs(z-TI.z)*0.5 + Math.abs(x-TI.x)*0.3;
+        y += Math.max(0, 3 - rd*0.1);
+        const jd = Math.sqrt((x-JA.x)**2 + (z-JA.z)**2);
+        if (jd < 12) y -= (12-jd)*0.15;
+        y += Math.sin(x*0.06)*Math.cos(z*0.05)*1.8;
+        y += Math.sin(x*0.13+1)*Math.cos(z*0.11+2)*0.6;
+        const vd = Math.sqrt((x-GM.x)**2 + (z-GM.z)**2);
+        if (vd < 18) { const f=Math.max(0,1-vd/18); y *= (1-f*0.5); y += f*2; }
+        return y + 1.5;
     }
 
-    function createTerrain() {
-        const size = 160;
-        const geo = new THREE.PlaneGeometry(size, size, 160, 160);
-        geo.rotateX(-Math.PI / 2);
+    // ═══════════════════════════════════════════
+    // Terrain mesh (smooth, rounded)
+    // ═══════════════════════════════════════════
+    (() => {
+        const S = 160, R = 180;
+        const geo = new THREE.PlaneGeometry(S, S, R, R);
+        geo.rotateX(-Math.PI/2);
         const pos = geo.attributes.position;
-
-        for (let i = 0; i < pos.count; i++) {
-            const x = pos.getX(i);
-            const z = pos.getZ(i);
-            pos.setY(i, terrainHeight(x, z));
-        }
+        for (let i=0; i<pos.count; i++) pos.setY(i, terrH(pos.getX(i), pos.getZ(i)));
         geo.computeVertexNormals();
-
-        // Vertex colors
-        const colors = new Float32Array(pos.count * 3);
-        const plateauPlace = KML_PLACES.find(p => p.type === 'plateau');
-        const forestHousePlace = KML_PLACES.find(p => p.type === 'forest_house');
-        const fcx = (plateauPlace.x + forestHousePlace.x) / 2;
-        const fcz = (plateauPlace.z + forestHousePlace.z) / 2;
-        const jardinPlace = KML_PLACES.find(p => p.type === 'garden');
-
-        for (let i = 0; i < pos.count; i++) {
-            const x = pos.getX(i);
-            const z = pos.getZ(i);
-            let r, g, b;
-
-            const forestDist = Math.sqrt((x - fcx) ** 2 + (z - fcz) ** 2);
-            const inForest = forestDist < 30 && x < 5;
-            const jardinDist = Math.sqrt((x - jardinPlace.x) ** 2 + (z - jardinPlace.z) ** 2);
-            const nearJardin = jardinDist < 10;
-
-            if (inForest) {
-                r = 0.15 + Math.random() * 0.06;
-                g = 0.33 + Math.random() * 0.1;
-                b = 0.1 + Math.random() * 0.04;
-            } else if (nearJardin) {
-                r = 0.28 + Math.random() * 0.05;
-                g = 0.6 + Math.random() * 0.1;
-                b = 0.2 + Math.random() * 0.05;
-            } else {
-                r = 0.3 + Math.random() * 0.06;
-                g = 0.58 + Math.random() * 0.12;
-                b = 0.22 + Math.random() * 0.06;
-            }
-
-            colors[i * 3] = r;
-            colors[i * 3 + 1] = g;
-            colors[i * 3 + 2] = b;
+        const cols = new Float32Array(pos.count*3);
+        for (let i=0; i<pos.count; i++) {
+            const x=pos.getX(i), z=pos.getZ(i);
+            const inForest = Math.sqrt((x-FCX)**2+(z-FCZ)**2)<30 && x<5;
+            const nearJard = Math.sqrt((x-JA.x)**2+(z-JA.z)**2)<10;
+            let r,g,b;
+            if(inForest){ r=0.22+Math.random()*0.04; g=0.48+Math.random()*0.08; b=0.15+Math.random()*0.03; }
+            else if(nearJard){ r=0.36+Math.random()*0.04; g=0.7+Math.random()*0.08; b=0.28+Math.random()*0.04; }
+            else { r=0.36+Math.random()*0.05; g=0.66+Math.random()*0.1; b=0.26+Math.random()*0.05; }
+            cols[i*3]=r; cols[i*3+1]=g; cols[i*3+2]=b;
         }
-        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(cols,3));
+        const m = new THREE.Mesh(geo, new THREE.MeshToonMaterial({ vertexColors:true, gradientMap:toonTex }));
+        m.receiveShadow = true;
+        scene.add(m);
+    })();
 
-        const mat = new THREE.MeshToonMaterial({ vertexColors: true });
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.receiveShadow = true;
-        return mesh;
-    }
-
-    scene.add(createTerrain());
-
-    // ═══════════════════════════════════════════════
-    // Helper: Cartoon Tree
-    // ═══════════════════════════════════════════════
-    function createCartoonTree(x, z, height, type = 'round') {
-        const group = new THREE.Group();
-        const ty = terrainHeight(x, z);
-        const trunkH = height * 0.4;
-
-        const trunk = new THREE.Mesh(
-            new THREE.CylinderGeometry(height * 0.06, height * 0.09, trunkH, 6),
-            trunkMat
-        );
-        trunk.position.y = trunkH / 2;
-        trunk.castShadow = true;
-        group.add(trunk);
+    // ═══════════════════════════════════════════
+    // BD-style Cartoon Tree (very round, blobby)
+    // ═══════════════════════════════════════════
+    function mkTree(x, z, h, type='round') {
+        const g = new THREE.Group(), ty = terrH(x,z);
+        // Round chunky trunk
+        const th = h*0.35;
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(h*0.09, h*0.13, th, 12), M.trunk);
+        trunk.position.y = th/2; trunk.castShadow = true;
+        g.add(trunk);
 
         if (type === 'round') {
-            const lr = height * 0.35;
-            const mats = [leafMat, darkLeafMat, lightLeafMat];
-            const leaves = new THREE.Mesh(
-                new THREE.SphereGeometry(lr, 7, 6),
-                mats[Math.floor(Math.random() * 3)]
-            );
-            leaves.position.y = trunkH + lr * 0.6;
-            leaves.scale.y = 0.85;
-            leaves.castShadow = true;
-            group.add(leaves);
-
-            for (let i = 0; i < 3; i++) {
-                const a = (i / 3) * Math.PI * 2 + Math.random() * 0.5;
-                const blob = new THREE.Mesh(
-                    new THREE.SphereGeometry(lr * 0.55, 6, 5),
-                    mats[Math.floor(Math.random() * 3)]
-                );
-                blob.position.set(Math.cos(a) * lr * 0.6, trunkH + lr * 0.3, Math.sin(a) * lr * 0.6);
+            const lr = h*0.42;
+            const mats = [M.leaf, M.darkLeaf, M.lightLeaf];
+            // Main blob - very round
+            const main = new THREE.Mesh(new THREE.SphereGeometry(lr, 16, 12), mats[Math.floor(Math.random()*3)]);
+            main.position.y = th + lr*0.55;
+            main.scale.set(1, 0.82, 1);
+            main.castShadow = true;
+            g.add(main);
+            // Extra blobs for organic BD look
+            for (let i=0; i<4; i++) {
+                const a = (i/4)*Math.PI*2 + Math.random()*0.8;
+                const br = lr*(0.45+Math.random()*0.15);
+                const blob = new THREE.Mesh(new THREE.SphereGeometry(br, 12, 10), mats[Math.floor(Math.random()*3)]);
+                blob.position.set(Math.cos(a)*lr*0.55, th+lr*0.2+Math.random()*lr*0.3, Math.sin(a)*lr*0.55);
                 blob.castShadow = true;
-                group.add(blob);
+                g.add(blob);
             }
         } else {
-            for (let j = 0; j < 3; j++) {
-                const cone = new THREE.Mesh(
-                    new THREE.ConeGeometry(height * (0.35 - j * 0.08), height * 0.3, 6),
-                    darkLeafMat
-                );
-                cone.position.y = trunkH + j * height * 0.17 + height * 0.15;
+            // Pine - rounded cones
+            for (let j=0; j<3; j++) {
+                const cr = h*(0.38-j*0.08), ch = h*0.32;
+                const cone = new THREE.Mesh(new THREE.ConeGeometry(cr, ch, 12), M.darkLeaf);
+                cone.position.y = th + j*ch*0.5 + ch*0.3;
                 cone.castShadow = true;
-                group.add(cone);
+                g.add(cone);
             }
         }
-
-        group.position.set(x, ty, z);
-        group.rotation.y = Math.random() * Math.PI * 2;
-        group.rotation.x = (Math.random() - 0.5) * 0.06;
-        group.rotation.z = (Math.random() - 0.5) * 0.06;
-        return group;
+        g.position.set(x, ty, z);
+        g.rotation.y = Math.random()*Math.PI*2;
+        g.rotation.x = (Math.random()-0.5)*0.05;
+        g.rotation.z = (Math.random()-0.5)*0.05;
+        return g;
     }
 
-    // ═══════════════════════════════════════════════
-    // Helper: Path / Road
-    // ═══════════════════════════════════════════════
-    function createPathSegments(points, width, mat) {
-        const group = new THREE.Group();
-        for (let i = 0; i < points.length - 1; i++) {
-            const [x1, z1] = points[i];
-            const [x2, z2] = points[i + 1];
-            const dx = x2 - x1, dz = z2 - z1;
-            const len = Math.sqrt(dx * dx + dz * dz);
-            const mx = (x1 + x2) / 2, mz = (z1 + z2) / 2;
-            const my = terrainHeight(mx, mz) + 0.08;
+    // ═══════════════════════════════════════════
+    // BD-style rounded house
+    // ═══════════════════════════════════════════
+    function mkHouse(x, z, opts={}) {
+        const g = new THREE.Group(), ty = terrH(x,z);
+        const w=opts.w||3, h=opts.h||2.5, d=opts.d||3;
+        const rm=opts.roof||M.roofRed, wm=opts.wall||M.wall;
 
-            const seg = new THREE.Mesh(new THREE.BoxGeometry(len, 0.12, width), mat);
-            seg.position.set(mx, my, mz);
-            seg.rotation.y = -Math.atan2(dz, dx);
-            seg.receiveShadow = true;
-            group.add(seg);
-        }
-        return group;
-    }
-
-    // ═══════════════════════════════════════════════
-    // Helper: Text Label Sprite
-    // ═══════════════════════════════════════════════
-    function createLabel(text, x, y, z, size, color) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 512;
-        canvas.height = 128;
-
-        ctx.font = `bold ${Math.floor(size * 28)}px "Comic Sans MS", cursive`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 5;
-        ctx.strokeText(text, 256, 64);
-        ctx.fillStyle = color || '#4a2c0a';
-        ctx.fillText(text, 256, 64);
-
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.minFilter = THREE.LinearFilter;
-        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
-        sprite.position.set(x, y, z);
-        sprite.scale.set(size * 8, size * 2, 1);
-        return sprite;
-    }
-
-    // ═══════════════════════════════════════════════
-    // Helper: Pin Marker (for KML points)
-    // ═══════════════════════════════════════════════
-    function createPinMarker(x, z, color) {
-        const group = new THREE.Group();
-        const ty = terrainHeight(x, z);
-
-        // Pin pole
-        const pole = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.06, 0.06, 3, 6),
-            new THREE.MeshToonMaterial({ color: 0x666666 })
-        );
-        pole.position.y = 1.5;
-        group.add(pole);
-
-        // Pin head (teardrop/balloon)
-        const head = new THREE.Mesh(
-            new THREE.SphereGeometry(0.6, 10, 8),
-            new THREE.MeshToonMaterial({ color: color || 0xe74c3c })
-        );
-        head.position.y = 3.3;
-        head.castShadow = true;
-        group.add(head);
-
-        // White dot
-        const dot = new THREE.Mesh(
-            new THREE.SphereGeometry(0.2, 8, 6),
-            new THREE.MeshToonMaterial({ color: 0xffffff })
-        );
-        dot.position.set(0, 3.45, 0.45);
-        group.add(dot);
-
-        group.position.set(x, ty, z);
-        return group;
-    }
-
-    // ═══════════════════════════════════════════════
-    // Unique Landmark Builders
-    // ═══════════════════════════════════════════════
-
-    // 🌿 Les jardins de l'Hermitage
-    function createGarden(place) {
-        const group = new THREE.Group();
-        const ty = terrainHeight(place.x, place.z);
-
-        // Garden beds in rows
-        const bedColors = [0xff6b9d, 0xffb347, 0xdda0dd, 0xffd700, 0xff69b4, 0x87ceeb];
-        for (let row = -2; row <= 2; row++) {
-            for (let col = -2; col <= 2; col++) {
-                // Earth bed
-                const bed = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.6, 0.3, 1.2),
-                    new THREE.MeshToonMaterial({ color: 0x6b4226 })
-                );
-                bed.position.set(col * 2.2, 0.15, row * 1.8);
-                bed.castShadow = true;
-                group.add(bed);
-
-                // Flowers / plants
-                const flowerCount = 3 + Math.floor(Math.random() * 3);
-                for (let f = 0; f < flowerCount; f++) {
-                    const fc = bedColors[Math.floor(Math.random() * bedColors.length)];
-                    const flower = new THREE.Mesh(
-                        new THREE.SphereGeometry(0.18 + Math.random() * 0.1, 6, 5),
-                        new THREE.MeshToonMaterial({ color: fc })
-                    );
-                    flower.position.set(
-                        col * 2.2 + (Math.random() - 0.5) * 1.2,
-                        0.4 + Math.random() * 0.3,
-                        row * 1.8 + (Math.random() - 0.5) * 0.8
-                    );
-                    flower.castShadow = true;
-                    group.add(flower);
+        // Rounded walls (capsule-like using cylinder + spheres)
+        const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, d, 4, 4, 4), wm);
+        walls.position.y = h/2; walls.castShadow = true; walls.receiveShadow = true;
+        // Round the edges by modifying vertices
+        const wp = walls.geometry.attributes.position;
+        const bevel = 0.35;
+        for (let i=0; i<wp.count; i++) {
+            const vx=wp.getX(i), vy=wp.getY(i), vz=wp.getZ(i);
+            const hw=w/2, hh=h/2, hd=d/2;
+            const dx = Math.max(0, Math.abs(vx)-hw+bevel);
+            const dy = Math.max(0, Math.abs(vy)-hh+bevel);
+            const dz = Math.max(0, Math.abs(vz)-hd+bevel);
+            const dist = Math.sqrt(dx*dx+dy*dy+dz*dz);
+            if (dist > 0) {
+                const factor = bevel / Math.max(dist, 0.001);
+                if (factor < 1) {
+                    wp.setX(i, Math.sign(vx) * Math.min(Math.abs(vx), hw-bevel+bevel*Math.abs(vx)/(Math.abs(vx)+0.001)*factor));
                 }
             }
         }
+        walls.geometry.computeVertexNormals();
+        g.add(walls);
 
-        // Small stone wall around
-        const wallPts = [[-6, -5], [6, -5], [6, 5], [-6, 5], [-6, -5]];
-        for (let i = 0; i < wallPts.length - 1; i++) {
-            const [x1, z1] = wallPts[i];
-            const [x2, z2] = wallPts[i + 1];
-            const dx = x2 - x1, dz = z2 - z1;
-            const len = Math.sqrt(dx * dx + dz * dz);
-            const wall = new THREE.Mesh(
-                new THREE.BoxGeometry(len, 0.5, 0.3),
-                stoneMat
-            );
-            wall.position.set((x1 + x2) / 2, 0.25, (z1 + z2) / 2);
-            wall.rotation.y = -Math.atan2(dz, dx);
-            group.add(wall);
-        }
-
-        // Garden gate
-        const gate = new THREE.Mesh(
-            new THREE.BoxGeometry(1.5, 1.2, 0.15),
-            new THREE.MeshToonMaterial({ color: 0x228B22 })
-        );
-        gate.position.set(0, 0.6, -5);
-        group.add(gate);
-
-        group.position.set(place.x, ty, place.z);
-        return group;
-    }
-
-    // 🔨 Les ateliers
-    function createWorkshop(place) {
-        const group = new THREE.Group();
-        const ty = terrainHeight(place.x, place.z);
-
-        // Main workshop building - longer, barn-like
-        const walls = new THREE.Mesh(
-            new THREE.BoxGeometry(6, 3, 4),
-            new THREE.MeshToonMaterial({ color: 0xe8d5b0 })
-        );
-        walls.position.y = 1.5;
-        walls.castShadow = true;
-        group.add(walls);
-
-        // Barn roof (triangular)
-        const roofShape = new THREE.Shape();
-        roofShape.moveTo(-3.5, 0);
-        roofShape.lineTo(0, 2);
-        roofShape.lineTo(3.5, 0);
-        roofShape.lineTo(-3.5, 0);
-        const roofGeo = new THREE.ExtrudeGeometry(roofShape, { depth: 4.4, bevelEnabled: false });
-        const roof = new THREE.Mesh(roofGeo, roofBrownMat);
-        roof.position.set(0, 3, -2.2);
+        // Rounded roof (big hemisphere on top)
+        const roofR = Math.max(w,d)*0.6;
+        const roofH = h*0.55;
+        const roof = new THREE.Mesh(new THREE.SphereGeometry(roofR, 16, 10, 0, Math.PI*2, 0, Math.PI*0.55), rm);
+        roof.position.y = h + roofH*0.15;
+        roof.scale.y = roofH/roofR;
         roof.castShadow = true;
-        group.add(roof);
+        g.add(roof);
 
-        // Large door
-        const door = new THREE.Mesh(
-            new THREE.BoxGeometry(2, 2.5, 0.15),
-            new THREE.MeshToonMaterial({ color: 0x5a3a1a })
-        );
-        door.position.set(0, 1.25, 2.05);
-        group.add(door);
+        // Round door
+        const door = new THREE.Mesh(new THREE.CapsuleGeometry(w*0.12, h*0.25, 8, 8), M.doorBrown);
+        door.position.set(0, h*0.25, d/2+0.05);
+        g.add(door);
 
-        // Workshop windows
-        [-2, 2].forEach(wx => {
-            const win = new THREE.Mesh(
-                new THREE.BoxGeometry(0.8, 0.8, 0.1),
-                new THREE.MeshToonMaterial({ color: 0xffd700, transparent: true, opacity: 0.8 })
-            );
-            win.position.set(wx, 2, 2.05);
-            group.add(win);
-        });
-
-        // Chimney / kiln
-        const chimney = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.4, 0.5, 2, 8),
-            stoneMat
-        );
-        chimney.position.set(2, 4.5, 0);
-        chimney.castShadow = true;
-        group.add(chimney);
-
-        // Small annex
-        const annex = new THREE.Mesh(
-            new THREE.BoxGeometry(2.5, 2, 3),
-            new THREE.MeshToonMaterial({ color: 0xdcc8a0 })
-        );
-        annex.position.set(-4.2, 1, 0);
-        annex.castShadow = true;
-        group.add(annex);
-
-        const annexRoof = new THREE.Mesh(
-            new THREE.ConeGeometry(2.3, 1.5, 4),
-            roofMat
-        );
-        annexRoof.position.set(-4.2, 2.75, 0);
-        annexRoof.rotation.y = Math.PI / 4;
-        group.add(annexRoof);
-
-        group.position.set(place.x, ty, place.z);
-        group.rotation.y = 0.3;
-        return group;
-    }
-
-    // 🏠 La grande maison
-    function createGrandeMaison(place) {
-        const group = new THREE.Group();
-        const ty = terrainHeight(place.x, place.z);
-
-        // Main building - large and stately
-        const walls = new THREE.Mesh(
-            new THREE.BoxGeometry(8, 4, 6),
-            wallMat
-        );
-        walls.position.y = 2;
-        walls.castShadow = true;
-        walls.receiveShadow = true;
-        group.add(walls);
-
-        // Mansard-style roof
-        const roofH = 2.5;
-        const roof = new THREE.Mesh(
-            new THREE.ConeGeometry(6, roofH, 4),
-            roofMat
-        );
-        roof.position.y = 4 + roofH / 2;
-        roof.rotation.y = Math.PI / 4;
-        roof.castShadow = true;
-        group.add(roof);
-
-        // Windows (symmetrical facade)
-        const winMat = new THREE.MeshToonMaterial({ color: 0xadd8e6 });
-        for (let row = 0; row < 2; row++) {
-            for (let col = -2; col <= 2; col++) {
-                if (col === 0 && row === 0) continue; // door position
-                const win = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.7, 0.9, 0.1),
-                    winMat
-                );
-                win.position.set(col * 1.5, 1.5 + row * 1.8, 3.05);
-                group.add(win);
-            }
-        }
-
-        // Grand door
-        const door = new THREE.Mesh(
-            new THREE.BoxGeometry(1.2, 2.2, 0.15),
-            new THREE.MeshToonMaterial({ color: 0x4a2510 })
-        );
-        door.position.set(0, 1.1, 3.05);
-        group.add(door);
-
-        // Door arch
-        const arch = new THREE.Mesh(
-            new THREE.TorusGeometry(0.6, 0.1, 6, 12, Math.PI),
-            stoneMat
-        );
-        arch.position.set(0, 2.2, 3.1);
-        group.add(arch);
-
-        // Two chimneys
-        [-2, 2].forEach(cx => {
-            const chimney = new THREE.Mesh(
-                new THREE.BoxGeometry(0.6, 1.8, 0.6),
-                stoneMat
-            );
-            chimney.position.set(cx, 5.5, 0);
-            chimney.castShadow = true;
-            group.add(chimney);
-        });
-
-        // Steps
-        for (let s = 0; s < 3; s++) {
-            const step = new THREE.Mesh(
-                new THREE.BoxGeometry(2.5 - s * 0.3, 0.2, 0.5),
-                stoneMat
-            );
-            step.position.set(0, s * 0.2, 3.5 + s * 0.5);
-            group.add(step);
-        }
-
-        group.position.set(place.x, ty, place.z);
-        group.rotation.y = -0.2;
-        return group;
-    }
-
-    // ⛺ Les tipis et cabanons
-    function createTipis(place) {
-        const group = new THREE.Group();
-        const ty = terrainHeight(place.x, place.z);
-
-        // 3 tipis
-        const tipiPositions = [[0, 0], [-4, 2], [3, 3]];
-        tipiPositions.forEach(([tx, tz], idx) => {
-            const tipiGroup = new THREE.Group();
-            const h = 3.5 + Math.random() * 0.5;
-            const r = 1.5;
-
-            // Tipi cone
-            const tipi = new THREE.Mesh(
-                new THREE.ConeGeometry(r, h, 8),
-                canvasMat
-            );
-            tipi.position.y = h / 2;
-            tipi.castShadow = true;
-            tipiGroup.add(tipi);
-
-            // Decorative stripes
-            const stripe = new THREE.Mesh(
-                new THREE.ConeGeometry(r * 1.01, h * 0.3, 8),
-                new THREE.MeshToonMaterial({ color: [0xcc4444, 0x4477aa, 0xc4943a][idx] })
-            );
-            stripe.position.y = h * 0.22;
-            tipiGroup.add(stripe);
-
-            // Poles sticking out top
-            for (let p = 0; p < 3; p++) {
-                const angle = (p / 3) * Math.PI * 2;
-                const pole = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.04, 0.04, 1.2, 4),
-                    tipiPoleMat
-                );
-                pole.position.set(Math.cos(angle) * 0.15, h + 0.3, Math.sin(angle) * 0.15);
-                pole.rotation.x = Math.cos(angle) * 0.2;
-                pole.rotation.z = Math.sin(angle) * 0.2;
-                tipiGroup.add(pole);
-            }
-
-            // Door opening
-            const doorFlap = new THREE.Mesh(
-                new THREE.PlaneGeometry(0.6, 1.2),
-                new THREE.MeshToonMaterial({ color: 0x8B5A2B, side: THREE.DoubleSide })
-            );
-            doorFlap.position.set(0, 0.7, r - 0.05);
-            tipiGroup.add(doorFlap);
-
-            tipiGroup.position.set(tx, 0, tz);
-            tipiGroup.rotation.y = Math.random() * Math.PI * 2;
-            group.add(tipiGroup);
-        });
-
-        // 2 cabanons (small wooden sheds)
-        [[5, -2], [-3, -3]].forEach(([cx, cz]) => {
-            const cabin = new THREE.Group();
-            const cWalls = new THREE.Mesh(
-                new THREE.BoxGeometry(2, 1.8, 2),
-                new THREE.MeshToonMaterial({ color: 0xb8860b })
-            );
-            cWalls.position.y = 0.9;
-            cWalls.castShadow = true;
-            cabin.add(cWalls);
-
-            const cRoof = new THREE.Mesh(
-                new THREE.ConeGeometry(1.8, 1, 4),
-                new THREE.MeshToonMaterial({ color: 0x654321 })
-            );
-            cRoof.position.y = 2.3;
-            cRoof.rotation.y = Math.PI / 4;
-            cRoof.castShadow = true;
-            cabin.add(cRoof);
-
-            cabin.position.set(cx, 0, cz);
-            cabin.rotation.y = Math.random() * Math.PI;
-            group.add(cabin);
-        });
-
-        // Fire pit in center
-        const fireRing = new THREE.Mesh(
-            new THREE.TorusGeometry(0.6, 0.15, 6, 12),
-            stoneMat
-        );
-        fireRing.position.set(0, 0.1, 1.5);
-        fireRing.rotation.x = -Math.PI / 2;
-        group.add(fireRing);
-
-        group.position.set(place.x, ty, place.z);
-        return group;
-    }
-
-    // 🏡 La mère mitage (main homestead)
-    function createMereMitage(place) {
-        const group = new THREE.Group();
-        const ty = terrainHeight(place.x, place.z);
-
-        // Charming cottage
-        const walls = new THREE.Mesh(
-            new THREE.BoxGeometry(5, 3, 4),
-            wallPinkMat
-        );
-        walls.position.y = 1.5;
-        walls.castShadow = true;
-        group.add(walls);
-
-        // Thatched-style roof
-        const roof = new THREE.Mesh(
-            new THREE.ConeGeometry(4.2, 2.2, 4),
-            new THREE.MeshToonMaterial({ color: 0xb8860b })
-        );
-        roof.position.y = 4.1;
-        roof.rotation.y = Math.PI / 4;
-        roof.castShadow = true;
-        group.add(roof);
-
-        // Welcoming door
-        const door = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 2, 0.15),
-            new THREE.MeshToonMaterial({ color: 0x8B0000 })
-        );
-        door.position.set(0, 1, 2.05);
-        group.add(door);
-
-        // Cute round windows
-        [-1.5, 1.5].forEach(wx => {
-            const win = new THREE.Mesh(
-                new THREE.CircleGeometry(0.4, 12),
-                new THREE.MeshToonMaterial({ color: 0xffd700 })
-            );
-            win.position.set(wx, 2.2, 2.05);
-            group.add(win);
-        });
-
-        // Chimney with smoke effect
-        const chimney = new THREE.Mesh(
-            new THREE.BoxGeometry(0.7, 1.8, 0.7),
-            new THREE.MeshToonMaterial({ color: 0x8b7355 })
-        );
-        chimney.position.set(1.5, 4.5, 0);
-        chimney.castShadow = true;
-        group.add(chimney);
-
-        // Garden fence around
-        const fencePts = [[-4, -3.5], [4, -3.5], [4, 3.5], [-4, 3.5], [-4, -3.5]];
-        for (let i = 0; i < fencePts.length - 1; i++) {
-            const [x1, z1] = fencePts[i];
-            const [x2, z2] = fencePts[i + 1];
-            const dx = x2 - x1, dz = z2 - z1;
-            const len = Math.sqrt(dx * dx + dz * dz);
-            const bar = new THREE.Mesh(
-                new THREE.BoxGeometry(len, 0.6, 0.08),
-                fenceMat
-            );
-            bar.position.set((x1 + x2) / 2, 0.4, (z1 + z2) / 2);
-            bar.rotation.y = -Math.atan2(dz, dx);
-            group.add(bar);
-        }
-
-        // Flower boxes
-        [-1.5, 1.5].forEach(wx => {
-            const box = new THREE.Mesh(
-                new THREE.BoxGeometry(0.8, 0.3, 0.3),
-                new THREE.MeshToonMaterial({ color: 0x654321 })
-            );
-            box.position.set(wx, 1.4, 2.2);
-            group.add(box);
-
-            for (let f = 0; f < 4; f++) {
-                const fl = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.1, 5, 4),
-                    new THREE.MeshToonMaterial({ color: flowerColors[Math.floor(Math.random() * flowerColors.length)] })
-                );
-                fl.position.set(wx + (f - 1.5) * 0.2, 1.6, 2.2);
-                group.add(fl);
-            }
-        });
-
-        group.position.set(place.x, ty, place.z);
-        group.rotation.y = 0.4;
-        return group;
-    }
-
-    // 🌄 Le plateau (lookout / clearing in forest)
-    function createPlateau(place) {
-        const group = new THREE.Group();
-        const ty = terrainHeight(place.x, place.z);
-
-        // Flat stone platform
-        const platform = new THREE.Mesh(
-            new THREE.CylinderGeometry(5, 5.5, 0.4, 12),
-            new THREE.MeshToonMaterial({ color: 0x9a9070 })
-        );
-        platform.position.y = 0.2;
-        platform.receiveShadow = true;
-        group.add(platform);
-
-        // Wooden bench
-        const benchSeat = new THREE.Mesh(
-            new THREE.BoxGeometry(2.5, 0.15, 0.6),
-            new THREE.MeshToonMaterial({ color: 0xa0784a })
-        );
-        benchSeat.position.set(0, 0.8, -2);
-        group.add(benchSeat);
-
-        const benchLegs = [-1, 1].map(s => {
-            const leg = new THREE.Mesh(
-                new THREE.BoxGeometry(0.1, 0.6, 0.6),
-                new THREE.MeshToonMaterial({ color: 0x8b6914 })
-            );
-            leg.position.set(s * 1, 0.5, -2);
-            return leg;
-        });
-        benchLegs.forEach(l => group.add(l));
-
-        // Info panel / viewpoint sign
-        const signPost = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.08, 2, 6),
-            trunkMat
-        );
-        signPost.position.set(2, 1, 0);
-        group.add(signPost);
-
-        const signBoard = new THREE.Mesh(
-            new THREE.BoxGeometry(1.8, 1, 0.08),
-            new THREE.MeshToonMaterial({ color: 0x654321 })
-        );
-        signBoard.position.set(2, 2.2, 0);
-        group.add(signBoard);
-
-        // Scattered rocks
-        for (let r = 0; r < 6; r++) {
-            const rock = new THREE.Mesh(
-                new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.4, 0),
-                stoneMat
-            );
-            const angle = Math.random() * Math.PI * 2;
-            const dist = 3 + Math.random() * 2;
-            rock.position.set(Math.cos(angle) * dist, 0.2, Math.sin(angle) * dist);
-            rock.rotation.set(Math.random(), Math.random(), Math.random());
-            rock.castShadow = true;
-            group.add(rock);
-        }
-
-        group.position.set(place.x, ty, place.z);
-        return group;
-    }
-
-    // 🏚 La maison dans la forêt
-    function createForestHouse(place) {
-        const group = new THREE.Group();
-        const ty = terrainHeight(place.x, place.z);
-
-        // Cozy forest cottage
-        const walls = new THREE.Mesh(
-            new THREE.BoxGeometry(3.5, 2.5, 3),
-            new THREE.MeshToonMaterial({ color: 0xd2b48c })
-        );
-        walls.position.y = 1.25;
-        walls.castShadow = true;
-        group.add(walls);
-
-        // Mossy stone base
-        const base = new THREE.Mesh(
-            new THREE.BoxGeometry(4, 0.4, 3.5),
-            new THREE.MeshToonMaterial({ color: 0x6b7a5a })
-        );
-        base.position.y = 0.2;
-        group.add(base);
-
-        // Roof with overhang
-        const roof = new THREE.Mesh(
-            new THREE.ConeGeometry(3.2, 2, 4),
-            new THREE.MeshToonMaterial({ color: 0x2d5a1e })
-        );
-        roof.position.y = 3.5;
-        roof.rotation.y = Math.PI / 4;
-        roof.castShadow = true;
-        group.add(roof);
-
-        // Round hobbit-like door
-        const doorFrame = new THREE.Mesh(
-            new THREE.CircleGeometry(0.6, 12),
-            new THREE.MeshToonMaterial({ color: 0x4a2510 })
-        );
-        doorFrame.position.set(0, 0.9, 1.55);
-        group.add(doorFrame);
-
-        // Tiny windows
+        // Round windows
         [-1, 1].forEach(s => {
-            const win = new THREE.Mesh(
-                new THREE.CircleGeometry(0.3, 8),
-                new THREE.MeshToonMaterial({ color: 0xffd700, transparent: true, opacity: 0.8 })
-            );
-            win.position.set(s * 1.1, 1.6, 1.55);
-            group.add(win);
+            const win = new THREE.Mesh(new THREE.CircleGeometry(w*0.1, 16), toon(0x88ccff));
+            win.position.set(s*w*0.3, h*0.55, d/2+0.06);
+            g.add(win);
+            // Window frame
+            const frame = new THREE.Mesh(new THREE.TorusGeometry(w*0.1, 0.04, 8, 16), M.wall);
+            frame.position.set(s*w*0.3, h*0.55, d/2+0.07);
+            g.add(frame);
         });
 
-        // Chimney
-        const chimney = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.25, 0.3, 1.5, 6),
-            stoneMat
-        );
-        chimney.position.set(1, 4, -0.5);
-        chimney.castShadow = true;
-        group.add(chimney);
-
-        // Surrounding mushrooms
-        for (let m = 0; m < 5; m++) {
-            const mush = new THREE.Group();
-            const stem = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.06, 0.08, 0.25, 5),
-                new THREE.MeshToonMaterial({ color: 0xfff8dc })
-            );
-            stem.position.y = 0.125;
-            mush.add(stem);
-
-            const cap = new THREE.Mesh(
-                new THREE.SphereGeometry(0.15, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2),
-                new THREE.MeshToonMaterial({ color: [0xff4444, 0xff8c00, 0x8B4513][m % 3] })
-            );
-            cap.position.y = 0.25;
-            mush.add(cap);
-
-            const angle = Math.random() * Math.PI * 2;
-            const dist = 2 + Math.random() * 1.5;
-            mush.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
-            group.add(mush);
+        // Rounded chimney
+        if (opts.chimney !== false) {
+            const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 1.6, 10), M.stone);
+            ch.position.set(w*0.2, h+roofH*0.6, 0);
+            ch.castShadow = true;
+            g.add(ch);
+            // Chimney cap
+            const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.15, 10), M.stone);
+            cap.position.set(w*0.2, h+roofH*0.6+0.85, 0);
+            g.add(cap);
         }
 
-        // Woodpile
-        for (let l = 0; l < 4; l++) {
-            const log = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.1, 0.1, 1.2, 5),
-                trunkMat
-            );
-            log.position.set(-2.2, 0.15 + l * 0.2, -0.5 + l * 0.05);
-            log.rotation.z = Math.PI / 2;
-            group.add(log);
-        }
-
-        group.position.set(place.x, ty, place.z);
-        group.rotation.y = 0.8;
-        return group;
+        g.position.set(x, ty, z);
+        g.rotation.y = opts.rot || 0;
+        return g;
     }
 
-    // ═══════════════════════════════════════════════
-    // Build all KML Landmarks
-    // ═══════════════════════════════════════════════
-    const pinColors = {
-        garden: 0x27ae60,
-        workshop: 0xe67e22,
-        grande_maison: 0xe74c3c,
-        tipis: 0x9b59b6,
-        mere_mitage: 0xf39c12,
-        plateau: 0x3498db,
-        forest_house: 0x1abc9c,
-    };
+    // ═══════════════════════════════════════════
+    // Path (rounded segments using capsules)
+    // ═══════════════════════════════════════════
+    function mkPath(pts, w, mat) {
+        const g = new THREE.Group();
+        for (let i=0; i<pts.length-1; i++) {
+            const [x1,z1]=pts[i], [x2,z2]=pts[i+1];
+            const dx=x2-x1, dz=z2-z1, len=Math.sqrt(dx*dx+dz*dz);
+            const mx=(x1+x2)/2, mz=(z1+z2)/2, my=terrH(mx,mz)+0.08;
+            // Use cylinder for rounded path segments
+            const seg = new THREE.Mesh(new THREE.CylinderGeometry(w/2, w/2, len, 12, 1), mat);
+            seg.position.set(mx, my, mz);
+            seg.rotation.z = Math.PI/2;
+            seg.rotation.y = Math.atan2(dz, dx);
+            // Actually let's use box but rounded
+            const seg2 = new THREE.Mesh(new THREE.BoxGeometry(len, 0.15, w), mat);
+            seg2.position.set(mx, my, mz);
+            seg2.rotation.y = -Math.atan2(dz, dx);
+            seg2.receiveShadow = true;
+            g.add(seg2);
+        }
+        return g;
+    }
 
+    // ═══════════════════════════════════════════
+    // Text sprite (BD comic font style)
+    // ═══════════════════════════════════════════
+    function mkLabel(text, x, y, z, size, color) {
+        const c = document.createElement('canvas');
+        const ctx = c.getContext('2d');
+        c.width = 512; c.height = 128;
+        ctx.font = `bold ${Math.floor(size*28)}px "Comic Sans MS", cursive`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        // Bold outline for BD style
+        ctx.strokeStyle = '#1a1000'; ctx.lineWidth = 6; ctx.lineJoin = 'round';
+        ctx.strokeText(text, 256, 64);
+        ctx.fillStyle = '#fff'; ctx.fillText(text, 256, 64);
+        // Inner color
+        ctx.fillStyle = color || '#2a1a00'; ctx.font = `bold ${Math.floor(size*27)}px "Comic Sans MS", cursive`;
+        ctx.fillText(text, 256, 64);
+
+        const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter;
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true }));
+        s.position.set(x, y, z); s.scale.set(size*8, size*2, 1);
+        return s;
+    }
+
+    // ═══════════════════════════════════════════
+    // Pin markers (round, bouncy)
+    // ═══════════════════════════════════════════
+    function mkPin(x, z, color) {
+        const g = new THREE.Group(), ty = terrH(x,z);
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 3, 8), toon(0x444444));
+        pole.position.y = 1.5; g.add(pole);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 12), toon(color));
+        head.position.y = 3.4; head.castShadow = true; g.add(head);
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), M.white);
+        dot.position.set(0, 3.6, 0.5); g.add(dot);
+        g.position.set(x, ty, z);
+        return g;
+    }
+
+    // ═══════════════════════════════════════════
+    // BD-style Bush (very round blobs)
+    // ═══════════════════════════════════════════
+    function mkBush(x, z) {
+        const g = new THREE.Group(), ty = terrH(x,z);
+        const n = 2+Math.floor(Math.random()*3);
+        const mats = [M.leaf, M.darkLeaf, M.lightLeaf];
+        for (let i=0; i<n; i++) {
+            const r = 0.35+Math.random()*0.45;
+            const b = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), mats[Math.floor(Math.random()*3)]);
+            b.position.set((Math.random()-0.5)*0.9, r*0.55, (Math.random()-0.5)*0.9);
+            b.castShadow = true; g.add(b);
+        }
+        g.position.set(x, ty, z);
+        return g;
+    }
+
+    // ═══════════════════════════════════════════
+    // BD-style Flower (round petals)
+    // ═══════════════════════════════════════════
+    const flowerCols = [0xff5588, 0xffaa33, 0xff5555, 0xdd88dd, 0xffdd00, 0xff66aa, 0x66bbee];
+    function mkFlower(x, z) {
+        const g = new THREE.Group(), ty = terrH(x,z);
+        const col = flowerCols[Math.floor(Math.random()*flowerCols.length)];
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.4, 6), toon(0x22aa22));
+        stem.position.y = 0.2; g.add(stem);
+        // Round petals
+        const center = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), toon(0xffee44));
+        center.position.y = 0.45; g.add(center);
+        for (let i=0; i<5; i++) {
+            const a = (i/5)*Math.PI*2;
+            const petal = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), toon(col));
+            petal.position.set(Math.cos(a)*0.12, 0.45, Math.sin(a)*0.12);
+            petal.scale.y = 0.5;
+            g.add(petal);
+        }
+        g.position.set(x, ty, z);
+        return g;
+    }
+
+    // ═══════════════════════════════════════════
+    // Unique landmarks (BD rounded style)
+    // ═══════════════════════════════════════════
+
+    // Jardins
+    function mkGarden(p) {
+        const g = new THREE.Group(), ty = terrH(p.x, p.z);
+        for (let row=-2; row<=2; row++) {
+            for (let col=-2; col<=2; col++) {
+                const bed = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.75, 0.25, 12), toon(0x6b4226));
+                bed.position.set(col*2, 0.12, row*1.7); bed.castShadow=true; g.add(bed);
+                const n = 3+Math.floor(Math.random()*3);
+                for (let f=0; f<n; f++) {
+                    const fc = flowerCols[Math.floor(Math.random()*flowerCols.length)];
+                    const fl = new THREE.Mesh(new THREE.SphereGeometry(0.15+Math.random()*0.1, 10, 8), toon(fc));
+                    fl.position.set(col*2+(Math.random()-0.5)*1, 0.35+Math.random()*0.25, row*1.7+(Math.random()-0.5)*0.8);
+                    fl.castShadow=true; g.add(fl);
+                }
+            }
+        }
+        // Round stone wall
+        const wallR = 6;
+        for (let a=0; a<Math.PI*2; a+=0.3) {
+            const rock = new THREE.Mesh(new THREE.SphereGeometry(0.3+Math.random()*0.15, 8, 6), M.stone);
+            rock.position.set(Math.cos(a)*wallR, 0.2, Math.sin(a)*wallR);
+            rock.scale.y = 0.6; g.add(rock);
+        }
+        // Round gate
+        const gate = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.12, 8, 16, Math.PI), toon(0x228B22));
+        gate.position.set(0, 0.8, -wallR); g.add(gate);
+        g.position.set(p.x, ty, p.z);
+        return g;
+    }
+
+    // Ateliers
+    function mkWorkshop(p) {
+        const g = new THREE.Group(), ty = terrH(p.x, p.z);
+        // Rounded barn
+        const walls = new THREE.Mesh(new THREE.CapsuleGeometry(1.8, 3, 12, 16), M.wallBeige);
+        walls.position.y = 1.8; walls.rotation.z = Math.PI/2;
+        walls.castShadow=true; g.add(walls);
+        // Rounded roof
+        const roof = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 10, 0, Math.PI*2, 0, Math.PI*0.45), M.roofBrown);
+        roof.position.y = 3.2; roof.scale.y = 0.5; roof.castShadow=true; g.add(roof);
+        // Big round door
+        const door = new THREE.Mesh(new THREE.CircleGeometry(0.9, 16, -Math.PI/2, Math.PI), M.doorBrown);
+        door.position.set(0, 0.9, 2.05); g.add(door);
+        // Round windows
+        [-1.8, 1.8].forEach(wx => {
+            const win = new THREE.Mesh(new THREE.CircleGeometry(0.4, 14), toon(0xffdd44));
+            win.position.set(wx, 2, 2.05); g.add(win);
+        });
+        // Round chimney
+        const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 1.8, 10), M.stone);
+        ch.position.set(2, 3.8, 0); ch.castShadow=true; g.add(ch);
+        // Small round annex
+        const annex = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 10, 0, Math.PI*2, 0, Math.PI*0.6), M.wallBeige);
+        annex.position.set(-4, 0, 0); annex.castShadow=true; g.add(annex);
+        const annexRoof = new THREE.Mesh(new THREE.SphereGeometry(1.7, 14, 10, 0, Math.PI*2, 0, Math.PI*0.4), M.roofRed);
+        annexRoof.position.set(-4, 1.2, 0); g.add(annexRoof);
+        g.position.set(p.x, ty, p.z); g.rotation.y = 0.3;
+        return g;
+    }
+
+    // Grande maison
+    function mkGrandeMaison(p) {
+        const g = new THREE.Group(), ty = terrH(p.x, p.z);
+        const house = mkHouse(0, 0, { w:7, h:4, d:5.5, roof:M.roofRed, wall:M.wall, chimney:true, rot:0 });
+        house.position.y = -ty; // cancel terrain since mkHouse adds it
+        // Rebuild inline instead
+        const walls = new THREE.Mesh(new THREE.BoxGeometry(7,4,5.5,4,4,4), M.wall);
+        walls.position.y = 2; walls.castShadow=true; g.add(walls);
+        // Big round roof
+        const roof = new THREE.Mesh(new THREE.SphereGeometry(5, 20, 12, 0, Math.PI*2, 0, Math.PI*0.45), M.roofRed);
+        roof.position.y = 4.3; roof.scale.y = 0.55; roof.castShadow=true; g.add(roof);
+        // Windows (round!)
+        for (let row=0; row<2; row++) {
+            for (let col=-2; col<=2; col++) {
+                if (col===0 && row===0) continue;
+                const win = new THREE.Mesh(new THREE.CircleGeometry(0.35, 14), toon(0x88ccff));
+                win.position.set(col*1.4, 1.5+row*1.6, 2.8); g.add(win);
+                const frame = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.04, 6, 14), M.wall);
+                frame.position.set(col*1.4, 1.5+row*1.6, 2.82); g.add(frame);
+            }
+        }
+        // Round door
+        const door = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1.2, 10, 10), M.doorBrown);
+        door.position.set(0, 1.1, 2.8); g.add(door);
+        // Arch
+        const arch = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 14, Math.PI), M.stone);
+        arch.position.set(0, 2.0, 2.85); g.add(arch);
+        // Two round chimneys
+        [-1.8, 1.8].forEach(cx => {
+            const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 1.6, 10), M.stone);
+            ch.position.set(cx, 5.2, 0); ch.castShadow=true; g.add(ch);
+        });
+        // Round steps
+        for (let s=0; s<3; s++) {
+            const step = new THREE.Mesh(new THREE.CylinderGeometry(1.2-s*0.15, 1.2-s*0.15, 0.18, 16), M.stone);
+            step.position.set(0, s*0.18, 3.3+s*0.4); g.add(step);
+        }
+        g.position.set(p.x, ty, p.z); g.rotation.y = -0.2;
+        return g;
+    }
+
+    // Tipis (very round cones)
+    function mkTipis(p) {
+        const g = new THREE.Group(), ty = terrH(p.x, p.z);
+        const tipiPos = [[0,0],[-4,2],[3,3]];
+        const tipiCols = [0xcc4444, 0x4477aa, 0xc4943a];
+        tipiPos.forEach(([tx,tz], i) => {
+            const tg = new THREE.Group();
+            const h = 3.8, r = 1.6;
+            // Round cone
+            const tipi = new THREE.Mesh(new THREE.ConeGeometry(r, h, 16), M.canvas);
+            tipi.position.y = h/2; tipi.castShadow=true; tg.add(tipi);
+            // Decorative band
+            const band = new THREE.Mesh(new THREE.TorusGeometry(r*0.85, 0.12, 8, 16), toon(tipiCols[i]));
+            band.position.y = h*0.3; band.rotation.x = Math.PI/2; tg.add(band);
+            // Poles
+            for (let p=0; p<3; p++) {
+                const a = (p/3)*Math.PI*2;
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 6), toon(0xa07848));
+                pole.position.set(Math.cos(a)*0.2, h+0.4, Math.sin(a)*0.2);
+                pole.rotation.x = Math.cos(a)*0.2;
+                pole.rotation.z = Math.sin(a)*0.2;
+                tg.add(pole);
+            }
+            // Round door
+            const df = new THREE.Mesh(new THREE.CircleGeometry(0.4, 12), M.doorBrown);
+            df.position.set(0, 0.6, r-0.05); tg.add(df);
+            tg.position.set(tx, 0, tz); tg.rotation.y = Math.random()*Math.PI*2;
+            g.add(tg);
+        });
+        // Cabanons (round huts)
+        [[5,-2],[-3,-3]].forEach(([cx,cz]) => {
+            const cab = new THREE.Group();
+            const cw = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.1, 1.8, 14), toon(0xb8860b));
+            cw.position.y = 0.9; cw.castShadow=true; cab.add(cw);
+            const cr = new THREE.Mesh(new THREE.SphereGeometry(1.2, 14, 10, 0, Math.PI*2, 0, Math.PI*0.45), toon(0x654321));
+            cr.position.y = 1.8; cr.scale.y = 0.7; cab.add(cr);
+            cab.position.set(cx, 0, cz);
+            g.add(cab);
+        });
+        // Round fire pit
+        const fire = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.18, 10, 16), M.stone);
+        fire.position.set(0, 0.1, 1.5); fire.rotation.x = -Math.PI/2; g.add(fire);
+        // Fire glow
+        const glow = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), toon(0xff6600));
+        glow.position.set(0, 0.3, 1.5); g.add(glow);
+        g.position.set(p.x, ty, p.z);
+        return g;
+    }
+
+    // Mere mitage (round cottage)
+    function mkMereMitage(p) {
+        const g = new THREE.Group(), ty = terrH(p.x, p.z);
+        // Round cottage body
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.5, 2.8, 16), M.wallPink);
+        body.position.y = 1.4; body.castShadow=true; g.add(body);
+        // Round thatched roof
+        const roof = new THREE.Mesh(new THREE.SphereGeometry(3, 18, 12, 0, Math.PI*2, 0, Math.PI*0.45), toon(0xb8860b));
+        roof.position.y = 3; roof.scale.y = 0.6; roof.castShadow=true; g.add(roof);
+        // Round door
+        const door = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.8, 10, 10), toon(0x880000));
+        door.position.set(0, 0.8, 2.3); g.add(door);
+        // Big round windows
+        [-1.2, 1.2].forEach(wx => {
+            const win = new THREE.Mesh(new THREE.CircleGeometry(0.35, 14), toon(0xffdd44));
+            win.position.set(wx, 2, 2.15); g.add(win);
+            const frame = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.05, 6, 14), M.wallPink);
+            frame.position.set(wx, 2, 2.17); g.add(frame);
+        });
+        // Round chimney
+        const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 1.4, 10), toon(0x8b7355));
+        ch.position.set(1.2, 3.8, 0); ch.castShadow=true; g.add(ch);
+        // Flower boxes (round)
+        [-1.2, 1.2].forEach(wx => {
+            const box = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.3, 0.25, 10), toon(0x654321));
+            box.position.set(wx, 1.3, 2.4); g.add(box);
+            for (let f=0; f<3; f++) {
+                const fl = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), toon(flowerCols[Math.floor(Math.random()*flowerCols.length)]));
+                fl.position.set(wx+(f-1)*0.18, 1.5, 2.4); g.add(fl);
+            }
+        });
+        // Round fence
+        for (let a=0; a<Math.PI*2; a+=0.5) {
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.7, 6), M.fence);
+            post.position.set(Math.cos(a)*3.8, 0.35, Math.sin(a)*3.8); g.add(post);
+        }
+        g.position.set(p.x, ty, p.z); g.rotation.y = 0.4;
+        return g;
+    }
+
+    // Plateau (round clearing)
+    function mkPlateau(p) {
+        const g = new THREE.Group(), ty = terrH(p.x, p.z);
+        const platform = new THREE.Mesh(new THREE.CylinderGeometry(5, 5.5, 0.5, 24), toon(0x9a9070));
+        platform.position.y = 0.25; platform.receiveShadow=true; g.add(platform);
+        // Round bench
+        const seat = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 2, 8, 8), toon(0xa07848));
+        seat.position.set(0, 0.75, -2); seat.rotation.z = Math.PI/2; g.add(seat);
+        [-0.8, 0.8].forEach(s => {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 6), toon(0x8b6914));
+            leg.position.set(s, 0.45, -2); g.add(leg);
+        });
+        // Sign
+        const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2, 8), M.trunk);
+        sp.position.set(2, 1, 0); g.add(sp);
+        const sb = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 1, 8, 8), toon(0x654321));
+        sb.position.set(2, 2.2, 0); sb.rotation.z = Math.PI/2; g.add(sb);
+        // Round rocks
+        for (let r=0; r<8; r++) {
+            const rock = new THREE.Mesh(new THREE.SphereGeometry(0.25+Math.random()*0.35, 10, 8), M.stone);
+            const a = Math.random()*Math.PI*2, d = 3+Math.random()*2;
+            rock.position.set(Math.cos(a)*d, 0.2, Math.sin(a)*d);
+            rock.scale.y = 0.5+Math.random()*0.3;
+            g.add(rock);
+        }
+        g.position.set(p.x, ty, p.z);
+        return g;
+    }
+
+    // Maison foret (hobbit-round)
+    function mkForestHouse(p) {
+        const g = new THREE.Group(), ty = terrH(p.x, p.z);
+        // Very round cottage
+        const body = new THREE.Mesh(new THREE.SphereGeometry(2, 18, 14, 0, Math.PI*2, 0.2, Math.PI*0.6), toon(0xd2b48c));
+        body.position.y = 1.2; body.castShadow=true; g.add(body);
+        // Mossy round base
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.4, 0.4, 18), toon(0x6b7a5a));
+        base.position.y = 0.2; g.add(base);
+        // Green round roof (mossy dome)
+        const roof = new THREE.Mesh(new THREE.SphereGeometry(2.3, 18, 14, 0, Math.PI*2, 0, Math.PI*0.4), toon(0x2d5a1e));
+        roof.position.y = 2.6; roof.castShadow=true; g.add(roof);
+        // Round door
+        const door = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16), M.doorBrown);
+        door.position.set(0, 0.8, 1.85); g.add(door);
+        // Round windows
+        [-0.9, 0.9].forEach(s => {
+            const win = new THREE.Mesh(new THREE.CircleGeometry(0.25, 12), toon(0xffdd44));
+            win.position.set(s, 1.5, 1.8); g.add(win);
+        });
+        // Round chimney
+        const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 1.2, 8), M.stone);
+        ch.position.set(0.8, 3.2, -0.5); ch.castShadow=true; g.add(ch);
+        // BD mushrooms (very round!)
+        for (let m=0; m<6; m++) {
+            const mush = new THREE.Group();
+            const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.3, 8), toon(0xfff8dc));
+            stem.position.y = 0.15; mush.add(stem);
+            const cap = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8, 0, Math.PI*2, 0, Math.PI*0.55), toon([0xff4444, 0xff8c00, 0x8B4513][m%3]));
+            cap.position.y = 0.3; mush.add(cap);
+            // Dots on mushroom
+            if (m%3===0) {
+                for (let d=0; d<3; d++) {
+                    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), M.white);
+                    const da = (d/3)*Math.PI*2;
+                    dot.position.set(Math.cos(da)*0.12, 0.33, Math.sin(da)*0.12);
+                    mush.add(dot);
+                }
+            }
+            const a = Math.random()*Math.PI*2, d = 2.5+Math.random()*1.5;
+            mush.position.set(Math.cos(a)*d, 0, Math.sin(a)*d);
+            g.add(mush);
+        }
+        // Round woodpile
+        for (let l=0; l<5; l++) {
+            const log = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 1, 6, 6), M.trunk);
+            log.position.set(-2.5, 0.12+l*0.16, -0.3+l*0.03);
+            log.rotation.z = Math.PI/2;
+            g.add(log);
+        }
+        g.position.set(p.x, ty, p.z); g.rotation.y = 0.8;
+        return g;
+    }
+
+    // ═══════════════════════════════════════════
+    // Build scene
+    // ═══════════════════════════════════════════
+    const pinCols = { garden:0x27ae60, workshop:0xe67e22, grande_maison:0xe74c3c,
+        tipis:0x9b59b6, mere_mitage:0xf39c12, plateau:0x3498db, forest_house:0x1abc9c };
     const interactiveObjects = [];
 
-    KML_PLACES.forEach(place => {
-        // Pin marker
-        const pin = createPinMarker(place.x, place.z, pinColors[place.type]);
+    KML_PLACES.forEach(p => {
+        const pin = mkPin(p.x, p.z, pinCols[p.type]);
         scene.add(pin);
-        interactiveObjects.push({ mesh: pin, name: place.name });
+        interactiveObjects.push({ mesh: pin, name: p.name });
+        scene.add(mkLabel(p.name, p.x, terrH(p.x,p.z)+7.5, p.z, 0.85, '#2a1a00'));
 
-        // Label
-        const ty = terrainHeight(place.x, place.z);
-        scene.add(createLabel(place.name, place.x, ty + 7, place.z, 0.9, '#4a2c0a'));
-
-        // Unique 3D object per type
-        switch (place.type) {
-            case 'garden': scene.add(createGarden(place)); break;
-            case 'workshop': scene.add(createWorkshop(place)); break;
-            case 'grande_maison': scene.add(createGrandeMaison(place)); break;
-            case 'tipis': scene.add(createTipis(place)); break;
-            case 'mere_mitage': scene.add(createMereMitage(place)); break;
-            case 'plateau': scene.add(createPlateau(place)); break;
-            case 'forest_house': scene.add(createForestHouse(place)); break;
+        switch(p.type) {
+            case 'garden': scene.add(mkGarden(p)); break;
+            case 'workshop': scene.add(mkWorkshop(p)); break;
+            case 'grande_maison': scene.add(mkGrandeMaison(p)); break;
+            case 'tipis': scene.add(mkTipis(p)); break;
+            case 'mere_mitage': scene.add(mkMereMitage(p)); break;
+            case 'plateau': scene.add(mkPlateau(p)); break;
+            case 'forest_house': scene.add(mkForestHouse(p)); break;
         }
     });
 
-    // ═══════════════════════════════════════════════
-    // Forest (around plateau & forest house)
-    // ═══════════════════════════════════════════════
-    const plateauP = KML_PLACES.find(p => p.type === 'plateau');
-    const forestHouseP = KML_PLACES.find(p => p.type === 'forest_house');
-    const fcx = (plateauP.x + forestHouseP.x) / 2;
-    const fcz = (plateauP.z + forestHouseP.z) / 2;
-
-    for (let i = 0; i < 250; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 2 + Math.random() * 28;
-        const fx = fcx + Math.cos(angle) * dist;
-        const fz = fcz + Math.sin(angle) * dist;
-
-        if (fx > 10) continue; // Forest stays on west side
-        if (Math.sqrt((fx - fcx) ** 2 + (fz - fcz) ** 2) > 30) continue;
-
-        // Avoid KML landmarks
-        let tooClose = false;
-        for (const p of KML_PLACES) {
-            if (Math.sqrt((fx - p.x) ** 2 + (fz - p.z) ** 2) < 5) { tooClose = true; break; }
-        }
-        if (tooClose) continue;
-
-        const h = 2 + Math.random() * 3.5;
-        const type = Math.random() > 0.3 ? 'round' : 'pine';
-        scene.add(createCartoonTree(fx, fz, h, type));
+    // ═══════════════════════════════════════════
+    // Forest trees
+    // ═══════════════════════════════════════════
+    for (let i=0; i<280; i++) {
+        const a = Math.random()*Math.PI*2, d = 2+Math.random()*28;
+        const fx = FCX+Math.cos(a)*d, fz = FCZ+Math.sin(a)*d;
+        if (fx>10 || Math.sqrt((fx-FCX)**2+(fz-FCZ)**2)>30) continue;
+        let skip=false;
+        for (const p of KML_PLACES) if (Math.sqrt((fx-p.x)**2+(fz-p.z)**2)<5) { skip=true; break; }
+        if (skip) continue;
+        scene.add(mkTree(fx, fz, 2.2+Math.random()*3.5, Math.random()>0.3?'round':'pine'));
+    }
+    // Scattered
+    for (let i=0; i<45; i++) {
+        const tx=-20+Math.random()*70, tz=-50+Math.random()*100;
+        if (tx<10 && Math.sqrt((tx-FCX)**2+(tz-FCZ)**2)<30) continue;
+        let skip=false;
+        for (const p of KML_PLACES) if (Math.sqrt((tx-p.x)**2+(tz-p.z)**2)<6) { skip=true; break; }
+        if (skip) continue;
+        scene.add(mkTree(tx, tz, 1.8+Math.random()*2, 'round'));
     }
 
-    // Scattered trees elsewhere
-    for (let i = 0; i < 40; i++) {
-        const tx = -20 + Math.random() * 70;
-        const tz = -50 + Math.random() * 100;
-        if (tx < 10 && Math.sqrt((tx - fcx) ** 2 + (tz - fcz) ** 2) < 30) continue;
+    // ═══════════════════════════════════════════
+    // Paths
+    // ═══════════════════════════════════════════
+    const AT=KML_PLACES.find(p=>p.type==='workshop');
+    const ME=KML_PLACES.find(p=>p.type==='mere_mitage');
 
-        let tooClose = false;
-        for (const p of KML_PLACES) {
-            if (Math.sqrt((tx - p.x) ** 2 + (tz - p.z) ** 2) < 6) { tooClose = true; break; }
-        }
-        if (tooClose) continue;
+    scene.add(mkPath([[JA.x,JA.z],[JA.x+3,JA.z-8],[AT.x-2,AT.z+4],[AT.x,AT.z]], 1.5, M.road));
+    scene.add(mkPath([[AT.x,AT.z],[AT.x+5,AT.z-3],[GM.x-3,GM.z+2],[GM.x,GM.z]], 1.5, M.road));
+    scene.add(mkPath([[GM.x,GM.z],[GM.x+1,GM.z-4],[ME.x,ME.z+3],[ME.x,ME.z]], 1.2, M.road));
+    scene.add(mkPath([[AT.x,AT.z],[AT.x-5,AT.z-5],[TI.x+4,TI.z+5],[TI.x,TI.z]], 1, M.path));
+    scene.add(mkPath([[AT.x,AT.z],[AT.x-6,AT.z+1],[FH.x+4,FH.z-1],[FH.x,FH.z]], 0.8, M.path));
+    scene.add(mkPath([[FH.x,FH.z],[FH.x-3,FH.z-4],[PL.x+2,PL.z+3],[PL.x,PL.z]], 0.8, M.path));
+    scene.add(mkPath([[TI.x,TI.z],[TI.x-4,TI.z+5],[PL.x+2,PL.z-5],[PL.x,PL.z]], 0.7, M.path));
 
-        scene.add(createCartoonTree(tx, tz, 1.8 + Math.random() * 2, 'round'));
-    }
-
-    // ═══════════════════════════════════════════════
-    // Paths connecting KML landmarks
-    // ═══════════════════════════════════════════════
-    const ateliers = KML_PLACES.find(p => p.type === 'workshop');
-    const grandeMaison = KML_PLACES.find(p => p.type === 'grande_maison');
-    const tipis = KML_PLACES.find(p => p.type === 'tipis');
-    const mereMitage = KML_PLACES.find(p => p.type === 'mere_mitage');
-    const jardins = KML_PLACES.find(p => p.type === 'garden');
-    const forestHouse = KML_PLACES.find(p => p.type === 'forest_house');
-    const plateau = KML_PLACES.find(p => p.type === 'plateau');
-
-    // Main path: Jardins → Ateliers → Grande Maison → Mère Mitage
-    scene.add(createPathSegments([
-        [jardins.x, jardins.z],
-        [jardins.x + 3, jardins.z - 8],
-        [ateliers.x - 2, ateliers.z + 4],
-        [ateliers.x, ateliers.z],
-    ], 1.5, roadMat));
-
-    scene.add(createPathSegments([
-        [ateliers.x, ateliers.z],
-        [ateliers.x + 5, ateliers.z - 3],
-        [grandeMaison.x - 3, grandeMaison.z + 2],
-        [grandeMaison.x, grandeMaison.z],
-    ], 1.5, roadMat));
-
-    scene.add(createPathSegments([
-        [grandeMaison.x, grandeMaison.z],
-        [grandeMaison.x + 1, grandeMaison.z - 4],
-        [mereMitage.x, mereMitage.z + 3],
-        [mereMitage.x, mereMitage.z],
-    ], 1.2, roadMat));
-
-    // Path to tipis
-    scene.add(createPathSegments([
-        [ateliers.x, ateliers.z],
-        [ateliers.x - 5, ateliers.z - 5],
-        [tipis.x + 4, tipis.z + 5],
-        [tipis.x, tipis.z],
-    ], 1, pathMat));
-
-    // Forest path: Ateliers → Forest House → Plateau
-    scene.add(createPathSegments([
-        [ateliers.x, ateliers.z],
-        [ateliers.x - 6, ateliers.z + 1],
-        [forestHouse.x + 4, forestHouse.z - 1],
-        [forestHouse.x, forestHouse.z],
-    ], 0.8, pathMat));
-
-    scene.add(createPathSegments([
-        [forestHouse.x, forestHouse.z],
-        [forestHouse.x - 3, forestHouse.z - 4],
-        [plateau.x + 2, plateau.z + 3],
-        [plateau.x, plateau.z],
-    ], 0.8, pathMat));
-
-    // Tipis to Plateau (through forest)
-    scene.add(createPathSegments([
-        [tipis.x, tipis.z],
-        [tipis.x - 4, tipis.z + 5],
-        [plateau.x + 2, plateau.z - 5],
-        [plateau.x, plateau.z],
-    ], 0.7, pathMat));
-
-    // ═══════════════════════════════════════════════
-    // Pond (between forest house and jardins)
-    // ═══════════════════════════════════════════════
-    const pondX = (forestHouse.x + jardins.x) / 2 - 3;
-    const pondZ = (forestHouse.z + jardins.z) / 2;
-    const pondTy = terrainHeight(pondX, pondZ) - 0.3;
-    const pondGeo = new THREE.CircleGeometry(4, 24);
-    pondGeo.rotateX(-Math.PI / 2);
-    const pond = new THREE.Mesh(pondGeo, waterMat);
-    pond.position.set(pondX, pondTy, pondZ);
+    // Pond
+    const px=(FH.x+JA.x)/2-3, pz=(FH.z+JA.z)/2;
+    const pondGeo = new THREE.CircleGeometry(4.5, 28);
+    pondGeo.rotateX(-Math.PI/2);
+    const pond = new THREE.Mesh(pondGeo, M.water);
+    pond.position.set(px, terrH(px,pz)-0.3, pz);
     pond.scale.set(1.3, 1, 0.8);
     scene.add(pond);
 
-    // ═══════════════════════════════════════════════
-    // Bushes & Flowers scattered
-    // ═══════════════════════════════════════════════
-    for (let i = 0; i < 50; i++) {
-        const bx = -35 + Math.random() * 70;
-        const bz = -50 + Math.random() * 95;
-        let skip = false;
-        for (const p of KML_PLACES) {
-            if (Math.sqrt((bx - p.x) ** 2 + (bz - p.z) ** 2) < 5) { skip = true; break; }
-        }
-        if (skip) continue;
-
-        const group = new THREE.Group();
-        const ty = terrainHeight(bx, bz);
-        const cnt = 2 + Math.floor(Math.random() * 2);
-        for (let j = 0; j < cnt; j++) {
-            const r = 0.3 + Math.random() * 0.4;
-            const bush = new THREE.Mesh(
-                new THREE.SphereGeometry(r, 6, 5),
-                [leafMat, darkLeafMat, lightLeafMat][Math.floor(Math.random() * 3)]
-            );
-            bush.position.set((Math.random() - 0.5) * 0.8, r * 0.6, (Math.random() - 0.5) * 0.8);
-            bush.castShadow = true;
-            group.add(bush);
-        }
-        group.position.set(bx, ty, bz);
-        scene.add(group);
+    // Bushes & flowers
+    for (let i=0; i<55; i++) {
+        const bx=-35+Math.random()*70, bz=-50+Math.random()*95;
+        let skip=false;
+        for (const p of KML_PLACES) if (Math.sqrt((bx-p.x)**2+(bz-p.z)**2)<5) { skip=true; break; }
+        if (!skip) scene.add(mkBush(bx, bz));
+    }
+    for (let i=0; i<120; i++) {
+        const fx=-30+Math.random()*65, fz=-45+Math.random()*90;
+        scene.add(mkFlower(fx, fz));
     }
 
-    for (let i = 0; i < 100; i++) {
-        const fx = -30 + Math.random() * 65;
-        const fz = -45 + Math.random() * 90;
-        const ty = terrainHeight(fx, fz);
-        const fc = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+    // Direction labels
+    scene.add(mkLabel("Autr\u00eaches \u2191", 25, 12, -48, 1.1, '#5a3010'));
+    scene.add(mkLabel("\u2190 Centre \u00e9questre", -40, 12, -10, 1, '#5a3010'));
+    scene.add(mkLabel("Chevillecourt \u2192", 40, 12, -15, 1, '#5a3010'));
+    scene.add(mkLabel("\u2193 Hautebraye", 0, 12, 48, 1.1, '#5a3010'));
 
-        const stem = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.02, 0.02, 0.35, 3),
-            new THREE.MeshToonMaterial({ color: 0x228B22 })
-        );
-        stem.position.set(fx, ty + 0.175, fz);
-        scene.add(stem);
-
-        const petal = new THREE.Mesh(
-            new THREE.SphereGeometry(0.12, 5, 4),
-            new THREE.MeshToonMaterial({ color: fc })
-        );
-        petal.position.set(fx, ty + 0.42, fz);
-        petal.scale.y = 0.6;
-        scene.add(petal);
-    }
-
-    // ═══════════════════════════════════════════════
-    // Direction signs at edges
-    // ═══════════════════════════════════════════════
-    scene.add(createLabel("Autr\u00eaches \u2191", 25, 12, -48, 1.1, '#6b3a1f'));
-    scene.add(createLabel("\u2190 Centre \u00e9questre", -40, 12, -10, 1, '#6b3a1f'));
-    scene.add(createLabel("Chevillecourt \u2192", 40, 12, -15, 1, '#6b3a1f'));
-    scene.add(createLabel("\u2193 Hautebraye", 0, 12, 48, 1.1, '#6b3a1f'));
-
-    // Title label in sky
-    scene.add(createLabel("L'Hermitage et la For\u00eat", 0, 25, -40, 2, '#4a2c0a'));
-
-    // ═══════════════════════════════════════════════
-    // Clouds
-    // ═══════════════════════════════════════════════
+    // ═══════════════════════════════════════════
+    // Clouds (very round, BD style)
+    // ═══════════════════════════════════════════
     const clouds = [];
-    const cloudMat = new THREE.MeshToonMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
-    for (let i = 0; i < 8; i++) {
-        const group = new THREE.Group();
-        const parts = 4 + Math.floor(Math.random() * 3);
-        for (let j = 0; j < parts; j++) {
-            const r = 1.5 + Math.random() * 2;
-            const sphere = new THREE.Mesh(new THREE.SphereGeometry(r, 7, 6), cloudMat);
-            sphere.position.set((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 2);
-            sphere.scale.y = 0.5;
-            group.add(sphere);
+    for (let i=0; i<8; i++) {
+        const cg = new THREE.Group();
+        const n = 5+Math.floor(Math.random()*3);
+        for (let j=0; j<n; j++) {
+            const r = 1.8+Math.random()*2.2;
+            const sp = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), M.white);
+            sp.position.set((Math.random()-0.5)*4, (Math.random()-0.5)*0.6, (Math.random()-0.5)*2);
+            sp.scale.y = 0.45;
+            cg.add(sp);
         }
-        group.position.set(-60 + Math.random() * 120, 28 + Math.random() * 15, -50 + Math.random() * 80);
-        clouds.push(group);
-        scene.add(group);
+        cg.position.set(-60+Math.random()*120, 28+Math.random()*15, -50+Math.random()*80);
+        clouds.push(cg); scene.add(cg);
     }
 
-    // ═══════════════════════════════════════════════
-    // Tooltip on hover
-    // ═══════════════════════════════════════════════
+    // ═══════════════════════════════════════════
+    // Tooltip
+    // ═══════════════════════════════════════════
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const tooltipEl = document.getElementById('tooltip');
-
-    renderer.domElement.addEventListener('mousemove', (e) => {
-        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
+    renderer.domElement.addEventListener('mousemove', e => {
+        mouse.x = (e.clientX/innerWidth)*2-1;
+        mouse.y = -(e.clientY/innerHeight)*2+1;
         raycaster.setFromCamera(mouse, camera);
         let found = false;
         for (const obj of interactiveObjects) {
-            const intersects = raycaster.intersectObjects(obj.mesh.children, true);
-            if (intersects.length > 0) {
+            if (raycaster.intersectObjects(obj.mesh.children, true).length > 0) {
                 tooltipEl.style.display = 'block';
-                tooltipEl.style.left = (e.clientX + 15) + 'px';
-                tooltipEl.style.top = (e.clientY - 10) + 'px';
+                tooltipEl.style.left = (e.clientX+15)+'px';
+                tooltipEl.style.top = (e.clientY-10)+'px';
                 tooltipEl.textContent = obj.name;
-                found = true;
-                break;
+                found = true; break;
             }
         }
         if (!found) tooltipEl.style.display = 'none';
     });
 
-    // ═══════════════════════════════════════════════
-    // Animation Loop
-    // ═══════════════════════════════════════════════
+    // ═══════════════════════════════════════════
+    // Animation
+    // ═══════════════════════════════════════════
     document.getElementById('loading').style.display = 'none';
-
     let time = 0;
+
     function animate() {
         requestAnimationFrame(animate);
         time += 0.005;
-
-        clouds.forEach((c, i) => {
-            c.position.x += 0.008 + i * 0.002;
-            if (c.position.x > 70) c.position.x = -70;
+        clouds.forEach((c,i) => { c.position.x += 0.008+i*0.002; if (c.position.x>70) c.position.x=-70; });
+        pond.material.opacity = 0.85 + Math.sin(time*3)*0.05;
+        interactiveObjects.forEach((o,i) => {
+            const h = o.mesh.children[1];
+            if (h) h.position.y = 3.4 + Math.sin(time*2+i)*0.18;
         });
-
-        if (pond) pond.material.opacity = 0.8 + Math.sin(time * 3) * 0.05;
-
-        // Gentle pin bobbing
-        interactiveObjects.forEach((obj, i) => {
-            const pinHead = obj.mesh.children[1];
-            if (pinHead) pinHead.position.y = 3.3 + Math.sin(time * 2 + i) * 0.15;
-        });
-
         controls.update();
-        renderer.render(scene, camera);
+        composer.render();
     }
     animate();
 
-    // Resize
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
+    addEventListener('resize', () => {
+        camera.aspect = innerWidth/innerHeight;
         camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(innerWidth, innerHeight);
+        composer.setSize(innerWidth, innerHeight);
+        outlinePass.uniforms.resolution.value.set(innerWidth, innerHeight);
     });
 
     </script>
