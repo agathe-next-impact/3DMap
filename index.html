@@ -1029,18 +1029,35 @@
         return { x: AT.x + (ME.x-AT.x)*t, z: AT.z + (ME.z-AT.z)*t };
     }
     const extraBuildings = [
-        // ── LONG BUILDING on WEST side of road (replacing the pâté de maisons) ──
-        // Matches OSM map: large rectangular building opposite the Grande Maison
-        // Positioned parallel to the building row, on the west/left side of the route
-        (() => {
-            const mid = rowPos(0.5); // center of the AT→ME line
-            // Offset ~7 units west (perpendicular to row direction)
-            const perpX = Math.cos(rowAngle), perpZ = Math.sin(rowAngle);
-            return { x: mid.x - perpX*7, z: mid.z + perpZ*7, opts: {
-                w: 5.5, h: 3.5, d: 24, roof: M.roofRed, wall: toon(0xd0c0a0),
-                rot: rowAngle, chimney: false
-            }};
-        })(),
+        // ═══════════════════════════════════════════
+        // Aerial photo structure: buildings on BOTH sides of the road
+        // Road runs at perpendicular offset -3.5 from row center (AT→ME)
+        // WEST buildings: offset -7.5 from row center (left of road)
+        // EAST buildings: offset +1 from row center (right of road, fills gaps between AT/GM/ME)
+        // ═══════════════════════════════════════════
+        // ── WEST side of road (4 large farm buildings, matching aerial) ──
+        (() => { const p=rowPos(0.1); const px=Math.cos(rowAngle), pz=Math.sin(rowAngle);
+            return { x:p.x-px*7.5, z:p.z+pz*7.5, opts: { w:5, h:3, d:9, roof:M.roofBrown, wall:toon(0xd0c0a0), rot:rowAngle, chimney:false } }; })(),
+        (() => { const p=rowPos(0.32); const px=Math.cos(rowAngle), pz=Math.sin(rowAngle);
+            return { x:p.x-px*7.5, z:p.z+pz*7.5, opts: { w:5.5, h:3.2, d:10, roof:M.roofRed, wall:toon(0xc8b898), rot:rowAngle, chimney:false } }; })(),
+        (() => { const p=rowPos(0.56); const px=Math.cos(rowAngle), pz=Math.sin(rowAngle);
+            return { x:p.x-px*7.5, z:p.z+pz*7.5, opts: { w:5.5, h:3.5, d:11, roof:M.roofRed, wall:toon(0xd0c0a0), rot:rowAngle, chimney:false } }; })(),
+        (() => { const p=rowPos(0.8); const px=Math.cos(rowAngle), pz=Math.sin(rowAngle);
+            return { x:p.x-px*7.5, z:p.z+pz*7.5, opts: { w:5, h:3, d:8, roof:M.roofBrown, wall:toon(0xd8c8a8), rot:rowAngle, chimney:false } }; })(),
+        // ── EAST side of road (fills gaps between AT, GM, ME) ──
+        // Building between AT and GM (t≈0.2)
+        (() => { const p=rowPos(0.18); const px=Math.cos(rowAngle), pz=Math.sin(rowAngle);
+            return { x:p.x+px*1, z:p.z-pz*1, opts: { w:5, h:3, d:9, roof:M.roofRed, wall:toon(0xc8b898), rot:rowAngle, chimney:false } }; })(),
+        // Building between AT and GM (t≈0.38)
+        (() => { const p=rowPos(0.38); const px=Math.cos(rowAngle), pz=Math.sin(rowAngle);
+            return { x:p.x+px*1, z:p.z-pz*1, opts: { w:5, h:2.8, d:8, roof:M.roofBrown, wall:M.wallBeige, rot:rowAngle, chimney:false } }; })(),
+        // White-roofed building east side (t≈0.5, visible in aerial)
+        (() => { const p=rowPos(0.5); const px=Math.cos(rowAngle), pz=Math.sin(rowAngle);
+            return { x:p.x+px*1.5, z:p.z-pz*1.5, opts: { w:5, h:2.5, d:7, roof:toon(0xe8e0d0), wall:M.wall, rot:rowAngle, chimney:false } }; })(),
+        // Building between GM and ME (t≈0.82)
+        (() => { const p=rowPos(0.82); const px=Math.cos(rowAngle), pz=Math.sin(rowAngle);
+            return { x:p.x+px*0.5, z:p.z-pz*0.5, opts: { w:4.5, h:2.8, d:7, roof:M.roofRed, wall:toon(0xd0c0a0), rot:rowAngle, chimney:false } }; })(),
+        // ── Outlying buildings ──
         // Small outbuilding south of AT
         { x: AT.x+3, z: AT.z+8, opts: { w:3, h:2, d:4, roof:M.roofBrown, wall:toon(0xc8b898), rot:0.1, chimney:false } },
         // Forest house in the woods (west side)
@@ -1123,25 +1140,30 @@
         return [p.x - perpX*3.5, p.z + perpZ*3.5];
     }
     // Main road from south to north, passing between the two building rows
+    // Wider (3.5) to be clearly visible from above between the buildings
     scene.add(mkPath([
-        [roadPt(0)[0]+1, 60],
-        [roadPt(0)[0]+1, 45],
-        [roadPt(0)[0], JA.z],
-        [roadPt(0)[0], AT.z+5],
+        [roadPt(-0.1)[0]+1, 60],
+        [roadPt(-0.1)[0]+1, 45],
+        [roadPt(-0.1)[0], JA.z],
+        [roadPt(-0.05)[0], AT.z+5],
         roadPt(0),
+        roadPt(0.12),
         roadPt(0.25),
+        roadPt(0.38),
         roadPt(0.5),
         roadPt(0.63),  // near GM
-        roadPt(0.8),
+        roadPt(0.75),
+        roadPt(0.88),
         roadPt(1.0),   // near ME
-        roadPt(1.15),  // continue north
-    ], 3, M.road));
+        roadPt(1.1),
+    ], 3.5, M.road));
     // Road continues north
     scene.add(mkPath([
-        roadPt(1.15),
-        roadPt(1.3),
-        roadPt(1.45),
-    ], 2.5, M.road));
+        roadPt(1.1),
+        roadPt(1.25),
+        roadPt(1.4),
+        roadPt(1.55),
+    ], 3, M.road));
     // ── Curved forest path going WEST from road into forest ──
     scene.add(mkPath([
         roadPt(0.5),
