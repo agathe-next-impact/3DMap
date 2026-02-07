@@ -48,12 +48,26 @@
             border-radius: 20px;
             border: 3px solid #c4943a;
         }
+        #tooltip {
+            position: absolute;
+            display: none;
+            background: rgba(255, 248, 220, 0.95);
+            color: #4a2c0a;
+            padding: 8px 16px;
+            border-radius: 12px;
+            border: 2px solid #c4943a;
+            font-size: 1em;
+            pointer-events: none;
+            z-index: 15;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body>
     <div id="title">L'Hermitage<br>et la Forêt</div>
-    <div id="controls">Clic gauche: tourner | Molette: zoom | Clic droit: déplacer</div>
+    <div id="controls">Clic gauche: tourner | Molette: zoom | Clic droit: d&eacute;placer</div>
     <div id="loading">Chargement de la carte...</div>
+    <div id="tooltip"></div>
 
     <script type="importmap">
     {
@@ -68,13 +82,48 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-    // ─── Scene Setup ───
+    // ═══════════════════════════════════════════════
+    // KML GPS Data → 3D Coordinates
+    // ═══════════════════════════════════════════════
+    const KML_PLACES = [
+        { name: "Les jardins de l'Hermitage", lon: 3.1283726759185826, lat: 49.435474936916904, type: "garden" },
+        { name: "Les ateliers", lon: 3.1288569554447894, lat: 49.437065074302836, type: "workshop" },
+        { name: "La grande maison", lon: 3.1296145775339532, lat: 49.43767351636242, type: "grande_maison" },
+        { name: "Les tipis et cabanons", lon: 3.127584150334995, lat: 49.43836816567958, type: "tipis" },
+        { name: "La m\u00e8re mitage", lon: 3.129701704074207, lat: 49.4380282321367, type: "mere_mitage" },
+        { name: "Le plateau", lon: 3.1267507660369147, lat: 49.43760454355285, type: "plateau" },
+        { name: "La maison dans la for\u00eat", lon: 3.127281101499329, lat: 49.43692220017425, type: "forest_house" },
+    ];
+
+    // GPS → 3D conversion
+    const CENTER_LON = 3.12825;
+    const CENTER_LAT = 49.43695;
+    const METER_PER_DEG_LON = 72430; // at latitude ~49.4
+    const METER_PER_DEG_LAT = 111000;
+    const SCALE = 0.22; // meters to 3D units
+
+    function gpsTo3D(lon, lat) {
+        const dx = (lon - CENTER_LON) * METER_PER_DEG_LON;
+        const dz = (lat - CENTER_LAT) * METER_PER_DEG_LAT;
+        return { x: dx * SCALE, z: -dz * SCALE };
+    }
+
+    // Pre-compute 3D positions for all KML places
+    KML_PLACES.forEach(p => {
+        const pos = gpsTo3D(p.lon, p.lat);
+        p.x = pos.x;
+        p.z = pos.z;
+    });
+
+    // ═══════════════════════════════════════════════
+    // Scene Setup
+    // ═══════════════════════════════════════════════
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.FogExp2(0xc8e6f5, 0.008);
+    scene.fog = new THREE.FogExp2(0xc8e6f5, 0.006);
 
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
-    camera.position.set(0, 55, 65);
+    camera.position.set(0, 60, 70);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -86,35 +135,35 @@
     document.body.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0, -5);
+    controls.target.set(0, 0, 0);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.maxPolarAngle = Math.PI / 2.2;
-    controls.minDistance = 20;
-    controls.maxDistance = 120;
+    controls.minDistance = 15;
+    controls.maxDistance = 130;
 
-    // ─── Lighting ───
-    const ambientLight = new THREE.AmbientLight(0xfff5e0, 0.7);
-    scene.add(ambientLight);
+    // ═══════════════════════════════════════════════
+    // Lighting
+    // ═══════════════════════════════════════════════
+    scene.add(new THREE.AmbientLight(0xfff5e0, 0.7));
 
     const sunLight = new THREE.DirectionalLight(0xfff0d0, 1.8);
     sunLight.position.set(30, 50, 20);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(2048, 2048);
-    sunLight.shadow.camera.left = -60;
-    sunLight.shadow.camera.right = 60;
-    sunLight.shadow.camera.top = 60;
-    sunLight.shadow.camera.bottom = -60;
+    sunLight.shadow.camera.left = -70;
+    sunLight.shadow.camera.right = 70;
+    sunLight.shadow.camera.top = 70;
+    sunLight.shadow.camera.bottom = -70;
     scene.add(sunLight);
 
     const fillLight = new THREE.DirectionalLight(0xadd8e6, 0.4);
     fillLight.position.set(-20, 30, -20);
     scene.add(fillLight);
 
-    // ─── Materials ───
-    const grassMat = new THREE.MeshToonMaterial({ color: 0x5cb85c });
-    const darkGrassMat = new THREE.MeshToonMaterial({ color: 0x3a7a3a });
-    const forestFloorMat = new THREE.MeshToonMaterial({ color: 0x2d5a1e });
+    // ═══════════════════════════════════════════════
+    // Materials (Toon / Cartoon style)
+    // ═══════════════════════════════════════════════
     const pathMat = new THREE.MeshToonMaterial({ color: 0xd4a854 });
     const roadMat = new THREE.MeshToonMaterial({ color: 0xc4b28a });
     const waterMat = new THREE.MeshToonMaterial({ color: 0x4a9bd9, transparent: true, opacity: 0.85 });
@@ -129,81 +178,97 @@
     const wallPinkMat = new THREE.MeshToonMaterial({ color: 0xffe4e1 });
     const stoneMat = new THREE.MeshToonMaterial({ color: 0xb0a090 });
     const fenceMat = new THREE.MeshToonMaterial({ color: 0xdeb887 });
-    const fieldMat = new THREE.MeshToonMaterial({ color: 0xc4a03a });
-    const vineMat = new THREE.MeshToonMaterial({ color: 0x6b8e23 });
+    const canvasMat = new THREE.MeshToonMaterial({ color: 0xf5e6c8 });
+    const tipiPoleMat = new THREE.MeshToonMaterial({ color: 0xa0784a });
+    const flowerColors = [0xff6b9d, 0xffb347, 0xff6b6b, 0xdda0dd, 0xffd700, 0xff69b4, 0x87ceeb];
 
-    // ─── Helper Functions ───
+    // ═══════════════════════════════════════════════
+    // Terrain
+    // ═══════════════════════════════════════════════
+    function terrainHeight(x, z) {
+        let y = 0;
+
+        // Forest plateau hill (west side, where "Le plateau" and "Maison forêt" are)
+        const plateauPlace = KML_PLACES.find(p => p.type === 'plateau');
+        const forestHousePlace = KML_PLACES.find(p => p.type === 'forest_house');
+        const forestCenterX = (plateauPlace.x + forestHousePlace.x) / 2;
+        const forestCenterZ = (plateauPlace.z + forestHousePlace.z) / 2;
+        const forestDist = Math.sqrt((x - forestCenterX) ** 2 + (z - forestCenterZ) ** 2);
+        y += Math.max(0, 7 - forestDist * 0.15) * (0.7 + 0.3 * Math.cos(forestDist * 0.08));
+
+        // Slight ridge connecting forest to tipis area
+        const tipisPlace = KML_PLACES.find(p => p.type === 'tipis');
+        const ridgeDist = Math.abs(z - tipisPlace.z) * 0.5 + Math.abs(x - tipisPlace.x) * 0.3;
+        y += Math.max(0, 3 - ridgeDist * 0.1);
+
+        // Valley for jardins area (south)
+        const jardinPlace = KML_PLACES.find(p => p.type === 'garden');
+        const jardinDist = Math.sqrt((x - jardinPlace.x) ** 2 + (z - jardinPlace.z) ** 2);
+        if (jardinDist < 12) {
+            y -= (12 - jardinDist) * 0.15;
+        }
+
+        // Gentle rolling hills
+        y += Math.sin(x * 0.06) * Math.cos(z * 0.05) * 1.8;
+        y += Math.sin(x * 0.13 + 1) * Math.cos(z * 0.11 + 2) * 0.6;
+
+        // Flatten village / buildings area (east side)
+        const grandeMaisonPlace = KML_PLACES.find(p => p.type === 'grande_maison');
+        const villageDist = Math.sqrt((x - grandeMaisonPlace.x) ** 2 + (z - grandeMaisonPlace.z) ** 2);
+        if (villageDist < 18) {
+            const f = Math.max(0, 1 - villageDist / 18);
+            y *= (1 - f * 0.5);
+            y += f * 2;
+        }
+
+        // Base elevation
+        y += 1.5;
+        return y;
+    }
+
     function createTerrain() {
-        const geo = new THREE.PlaneGeometry(140, 120, 140, 120);
+        const size = 160;
+        const geo = new THREE.PlaneGeometry(size, size, 160, 160);
         geo.rotateX(-Math.PI / 2);
         const pos = geo.attributes.position;
 
         for (let i = 0; i < pos.count; i++) {
             const x = pos.getX(i);
             const z = pos.getZ(i);
-
-            let y = 0;
-
-            // Forest hill (left side) - elevated area
-            const forestDist = Math.sqrt((x + 25) ** 2 + (z + 5) ** 2);
-            y += Math.max(0, 8 - forestDist * 0.18) * Math.cos(forestDist * 0.08);
-
-            // Central ridge
-            const ridgeDist = Math.abs(x + 5) + Math.abs(z + 10) * 0.3;
-            y += Math.max(0, 4 - ridgeDist * 0.12);
-
-            // Gentle hills
-            y += Math.sin(x * 0.05) * Math.cos(z * 0.06) * 2;
-            y += Math.sin(x * 0.12 + 1) * Math.cos(z * 0.1 + 2) * 0.8;
-
-            // Valley for the pond
-            const pondDist = Math.sqrt((x + 5) ** 2 + (z + 8) ** 2);
-            if (pondDist < 8) {
-                y -= (8 - pondDist) * 0.4;
-            }
-
-            // Flatten village area
-            const villageDist = Math.sqrt((x - 18) ** 2 + (z + 5) ** 2);
-            if (villageDist < 20) {
-                const flatFactor = Math.max(0, 1 - villageDist / 20);
-                y *= (1 - flatFactor * 0.6);
-                y += flatFactor * 1.5;
-            }
-
-            // General slight slope
-            y += z * 0.02 + 1;
-
-            pos.setY(i, y);
+            pos.setY(i, terrainHeight(x, z));
         }
-
         geo.computeVertexNormals();
 
-        // Vertex colors for terrain variety
+        // Vertex colors
         const colors = new Float32Array(pos.count * 3);
+        const plateauPlace = KML_PLACES.find(p => p.type === 'plateau');
+        const forestHousePlace = KML_PLACES.find(p => p.type === 'forest_house');
+        const fcx = (plateauPlace.x + forestHousePlace.x) / 2;
+        const fcz = (plateauPlace.z + forestHousePlace.z) / 2;
+        const jardinPlace = KML_PLACES.find(p => p.type === 'garden');
+
         for (let i = 0; i < pos.count; i++) {
             const x = pos.getX(i);
             const z = pos.getZ(i);
-            const y = pos.getY(i);
-
             let r, g, b;
 
-            // Forest area (left)
-            const inForest = x < -5 && Math.sqrt((x + 25) ** 2 + (z + 5) ** 2) < 35;
-            // Fields area (right-bottom)
-            const inFields = x > 25 && z > 5;
+            const forestDist = Math.sqrt((x - fcx) ** 2 + (z - fcz) ** 2);
+            const inForest = forestDist < 30 && x < 5;
+            const jardinDist = Math.sqrt((x - jardinPlace.x) ** 2 + (z - jardinPlace.z) ** 2);
+            const nearJardin = jardinDist < 10;
 
             if (inForest) {
-                r = 0.18 + Math.random() * 0.05;
-                g = 0.35 + Math.random() * 0.08;
-                b = 0.12 + Math.random() * 0.03;
-            } else if (inFields) {
-                r = 0.65 + Math.random() * 0.1;
-                g = 0.6 + Math.random() * 0.05;
+                r = 0.15 + Math.random() * 0.06;
+                g = 0.33 + Math.random() * 0.1;
+                b = 0.1 + Math.random() * 0.04;
+            } else if (nearJardin) {
+                r = 0.28 + Math.random() * 0.05;
+                g = 0.6 + Math.random() * 0.1;
                 b = 0.2 + Math.random() * 0.05;
             } else {
                 r = 0.3 + Math.random() * 0.06;
-                g = 0.62 + Math.random() * 0.1;
-                b = 0.25 + Math.random() * 0.05;
+                g = 0.58 + Math.random() * 0.12;
+                b = 0.22 + Math.random() * 0.06;
             }
 
             colors[i * 3] = r;
@@ -212,82 +277,59 @@
         }
         geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-        const terrainMat = new THREE.MeshToonMaterial({ vertexColors: true });
-        const terrain = new THREE.Mesh(geo, terrainMat);
-        terrain.receiveShadow = true;
-        return { terrain, geometry: geo };
+        const mat = new THREE.MeshToonMaterial({ vertexColors: true });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.receiveShadow = true;
+        return mesh;
     }
 
-    function getTerrainHeight(geo, x, z) {
-        // Approximate height from terrain formula
-        let y = 0;
-        const forestDist = Math.sqrt((x + 25) ** 2 + (z + 5) ** 2);
-        y += Math.max(0, 8 - forestDist * 0.18) * Math.cos(forestDist * 0.08);
-        const ridgeDist = Math.abs(x + 5) + Math.abs(z + 10) * 0.3;
-        y += Math.max(0, 4 - ridgeDist * 0.12);
-        y += Math.sin(x * 0.05) * Math.cos(z * 0.06) * 2;
-        y += Math.sin(x * 0.12 + 1) * Math.cos(z * 0.1 + 2) * 0.8;
-        const pondDist = Math.sqrt((x + 5) ** 2 + (z + 8) ** 2);
-        if (pondDist < 8) y -= (8 - pondDist) * 0.4;
-        const villageDist = Math.sqrt((x - 18) ** 2 + (z + 5) ** 2);
-        if (villageDist < 20) {
-            const flatFactor = Math.max(0, 1 - villageDist / 20);
-            y *= (1 - flatFactor * 0.6);
-            y += flatFactor * 1.5;
-        }
-        y += z * 0.02 + 1;
-        return y;
-    }
+    scene.add(createTerrain());
 
-    function createCartoonTree(x, z, height, terrainGeo, type = 'round') {
+    // ═══════════════════════════════════════════════
+    // Helper: Cartoon Tree
+    // ═══════════════════════════════════════════════
+    function createCartoonTree(x, z, height, type = 'round') {
         const group = new THREE.Group();
-        const ty = getTerrainHeight(terrainGeo, x, z);
-
+        const ty = terrainHeight(x, z);
         const trunkH = height * 0.4;
+
         const trunk = new THREE.Mesh(
             new THREE.CylinderGeometry(height * 0.06, height * 0.09, trunkH, 6),
             trunkMat
         );
-        trunk.position.set(0, trunkH / 2, 0);
+        trunk.position.y = trunkH / 2;
         trunk.castShadow = true;
         group.add(trunk);
 
         if (type === 'round') {
-            const leafRadius = height * 0.35;
+            const lr = height * 0.35;
+            const mats = [leafMat, darkLeafMat, lightLeafMat];
             const leaves = new THREE.Mesh(
-                new THREE.SphereGeometry(leafRadius, 7, 6),
-                [leafMat, darkLeafMat, lightLeafMat][Math.floor(Math.random() * 3)]
+                new THREE.SphereGeometry(lr, 7, 6),
+                mats[Math.floor(Math.random() * 3)]
             );
-            leaves.position.set(0, trunkH + leafRadius * 0.6, 0);
+            leaves.position.y = trunkH + lr * 0.6;
             leaves.scale.y = 0.85;
             leaves.castShadow = true;
             group.add(leaves);
 
-            // Extra leaf blobs for cartoon look
             for (let i = 0; i < 3; i++) {
-                const angle = (i / 3) * Math.PI * 2 + Math.random() * 0.5;
-                const blobR = leafRadius * 0.55;
+                const a = (i / 3) * Math.PI * 2 + Math.random() * 0.5;
                 const blob = new THREE.Mesh(
-                    new THREE.SphereGeometry(blobR, 6, 5),
-                    [leafMat, darkLeafMat, lightLeafMat][Math.floor(Math.random() * 3)]
+                    new THREE.SphereGeometry(lr * 0.55, 6, 5),
+                    mats[Math.floor(Math.random() * 3)]
                 );
-                blob.position.set(
-                    Math.cos(angle) * leafRadius * 0.6,
-                    trunkH + leafRadius * 0.3,
-                    Math.sin(angle) * leafRadius * 0.6
-                );
+                blob.position.set(Math.cos(a) * lr * 0.6, trunkH + lr * 0.3, Math.sin(a) * lr * 0.6);
                 blob.castShadow = true;
                 group.add(blob);
             }
-        } else if (type === 'pine') {
+        } else {
             for (let j = 0; j < 3; j++) {
-                const coneR = height * (0.35 - j * 0.08);
-                const coneH = height * 0.3;
                 const cone = new THREE.Mesh(
-                    new THREE.ConeGeometry(coneR, coneH, 6),
+                    new THREE.ConeGeometry(height * (0.35 - j * 0.08), height * 0.3, 6),
                     darkLeafMat
                 );
-                cone.position.set(0, trunkH + j * coneH * 0.55 + coneH * 0.3, 0);
+                cone.position.y = trunkH + j * height * 0.17 + height * 0.15;
                 cone.castShadow = true;
                 group.add(cone);
             }
@@ -295,93 +337,25 @@
 
         group.position.set(x, ty, z);
         group.rotation.y = Math.random() * Math.PI * 2;
-
-        // Slight random lean for cartoon feel
-        group.rotation.x = (Math.random() - 0.5) * 0.08;
-        group.rotation.z = (Math.random() - 0.5) * 0.08;
-
+        group.rotation.x = (Math.random() - 0.5) * 0.06;
+        group.rotation.z = (Math.random() - 0.5) * 0.06;
         return group;
     }
 
-    function createHouse(x, z, terrainGeo, opts = {}) {
-        const group = new THREE.Group();
-        const ty = getTerrainHeight(terrainGeo, x, z);
-        const w = opts.width || 2.5 + Math.random() * 1.5;
-        const h = opts.height || 2 + Math.random() * 1;
-        const d = opts.depth || 2.5 + Math.random() * 1.5;
-        const roofColor = opts.roofMat || [roofMat, roofBlueMat, roofBrownMat][Math.floor(Math.random() * 3)];
-        const wallColor = opts.wallMat || [wallMat, wallPinkMat][Math.floor(Math.random() * 2)];
-
-        // Walls
-        const walls = new THREE.Mesh(
-            new THREE.BoxGeometry(w, h, d),
-            wallColor
-        );
-        walls.position.y = h / 2;
-        walls.castShadow = true;
-        walls.receiveShadow = true;
-        group.add(walls);
-
-        // Roof
-        const roofH = h * 0.7;
-        const roofGeo = new THREE.ConeGeometry(Math.max(w, d) * 0.75, roofH, 4);
-        const roof = new THREE.Mesh(roofGeo, roofColor);
-        roof.position.y = h + roofH / 2;
-        roof.rotation.y = Math.PI / 4;
-        roof.castShadow = true;
-        group.add(roof);
-
-        // Door
-        const door = new THREE.Mesh(
-            new THREE.BoxGeometry(w * 0.25, h * 0.45, 0.1),
-            new THREE.MeshToonMaterial({ color: 0x6b3a1f })
-        );
-        door.position.set(0, h * 0.22, d / 2 + 0.05);
-        group.add(door);
-
-        // Windows
-        const winMat = new THREE.MeshToonMaterial({ color: 0xadd8e6 });
-        [-1, 1].forEach(side => {
-            const win = new THREE.Mesh(
-                new THREE.BoxGeometry(w * 0.18, h * 0.2, 0.1),
-                winMat
-            );
-            win.position.set(side * w * 0.3, h * 0.6, d / 2 + 0.05);
-            group.add(win);
-        });
-
-        // Chimney
-        if (Math.random() > 0.4) {
-            const chimney = new THREE.Mesh(
-                new THREE.BoxGeometry(0.5, roofH * 0.8, 0.5),
-                stoneMat
-            );
-            chimney.position.set(w * 0.25, h + roofH * 0.5, 0);
-            chimney.castShadow = true;
-            group.add(chimney);
-        }
-
-        group.position.set(x, ty, z);
-        group.rotation.y = opts.rotation || Math.random() * Math.PI * 2;
-        return group;
-    }
-
-    function createPath(points, width, terrainGeo) {
+    // ═══════════════════════════════════════════════
+    // Helper: Path / Road
+    // ═══════════════════════════════════════════════
+    function createPathSegments(points, width, mat) {
         const group = new THREE.Group();
         for (let i = 0; i < points.length - 1; i++) {
-            const p1 = points[i];
-            const p2 = points[i + 1];
-            const dx = p2[0] - p1[0];
-            const dz = p2[1] - p1[1];
+            const [x1, z1] = points[i];
+            const [x2, z2] = points[i + 1];
+            const dx = x2 - x1, dz = z2 - z1;
             const len = Math.sqrt(dx * dx + dz * dz);
-            const mx = (p1[0] + p2[0]) / 2;
-            const mz = (p1[1] + p2[1]) / 2;
-            const my = getTerrainHeight(terrainGeo, mx, mz) + 0.05;
+            const mx = (x1 + x2) / 2, mz = (z1 + z2) / 2;
+            const my = terrainHeight(mx, mz) + 0.08;
 
-            const seg = new THREE.Mesh(
-                new THREE.BoxGeometry(len, 0.12, width),
-                pathMat
-            );
+            const seg = new THREE.Mesh(new THREE.BoxGeometry(len, 0.12, width), mat);
             seg.position.set(mx, my, mz);
             seg.rotation.y = -Math.atan2(dz, dx);
             seg.receiveShadow = true;
@@ -390,408 +364,911 @@
         return group;
     }
 
-    function createRoad(points, width, terrainGeo) {
-        const group = new THREE.Group();
-        for (let i = 0; i < points.length - 1; i++) {
-            const p1 = points[i];
-            const p2 = points[i + 1];
-            const dx = p2[0] - p1[0];
-            const dz = p2[1] - p1[1];
-            const len = Math.sqrt(dx * dx + dz * dz);
-            const mx = (p1[0] + p2[0]) / 2;
-            const mz = (p1[1] + p2[1]) / 2;
-            const my = getTerrainHeight(terrainGeo, mx, mz) + 0.08;
-
-            const seg = new THREE.Mesh(
-                new THREE.BoxGeometry(len, 0.15, width),
-                roadMat
-            );
-            seg.position.set(mx, my, mz);
-            seg.rotation.y = -Math.atan2(dz, dx);
-            seg.receiveShadow = true;
-            group.add(seg);
-        }
-        return group;
-    }
-
-    function createPond(x, z, rx, rz, terrainGeo) {
-        const ty = getTerrainHeight(terrainGeo, x, z) - 0.3;
-        const pondGeo = new THREE.CircleGeometry(rx, 24);
-        pondGeo.rotateX(-Math.PI / 2);
-        const pondMesh = new THREE.Mesh(pondGeo, waterMat);
-        pondMesh.position.set(x, ty, z);
-        pondMesh.scale.z = rz / rx;
-        return pondMesh;
-    }
-
-    function createBush(x, z, terrainGeo) {
-        const ty = getTerrainHeight(terrainGeo, x, z);
-        const group = new THREE.Group();
-        const count = 2 + Math.floor(Math.random() * 3);
-        for (let i = 0; i < count; i++) {
-            const r = 0.4 + Math.random() * 0.4;
-            const bush = new THREE.Mesh(
-                new THREE.SphereGeometry(r, 6, 5),
-                [leafMat, darkLeafMat, lightLeafMat][Math.floor(Math.random() * 3)]
-            );
-            bush.position.set(
-                (Math.random() - 0.5) * 1,
-                r * 0.7,
-                (Math.random() - 0.5) * 1
-            );
-            bush.castShadow = true;
-            group.add(bush);
-        }
-        group.position.set(x, ty, z);
-        return group;
-    }
-
-    function createFlower(x, z, terrainGeo) {
-        const ty = getTerrainHeight(terrainGeo, x, z);
-        const group = new THREE.Group();
-        const colors = [0xff6b9d, 0xffb347, 0xff6b6b, 0xdda0dd, 0xffd700, 0xff69b4];
-        const color = colors[Math.floor(Math.random() * colors.length)];
-
-        const stem = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.03, 0.03, 0.4, 4),
-            new THREE.MeshToonMaterial({ color: 0x228B22 })
-        );
-        stem.position.y = 0.2;
-        group.add(stem);
-
-        const petals = new THREE.Mesh(
-            new THREE.SphereGeometry(0.15, 6, 5),
-            new THREE.MeshToonMaterial({ color })
-        );
-        petals.position.y = 0.45;
-        petals.scale.y = 0.6;
-        group.add(petals);
-
-        group.position.set(x, ty, z);
-        return group;
-    }
-
-    function createFence(points, terrainGeo) {
-        const group = new THREE.Group();
-        for (let i = 0; i < points.length - 1; i++) {
-            const p1 = points[i];
-            const p2 = points[i + 1];
-            const dx = p2[0] - p1[0];
-            const dz = p2[1] - p1[1];
-            const len = Math.sqrt(dx * dx + dz * dz);
-            const steps = Math.ceil(len / 1.5);
-
-            for (let s = 0; s <= steps; s++) {
-                const t = s / steps;
-                const fx = p1[0] + dx * t;
-                const fz = p1[1] + dz * t;
-                const fy = getTerrainHeight(terrainGeo, fx, fz);
-
-                const post = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.12, 0.8, 0.12),
-                    fenceMat
-                );
-                post.position.set(fx, fy + 0.4, fz);
-                post.castShadow = true;
-                group.add(post);
-            }
-
-            // Horizontal bar
-            const mx = (p1[0] + p2[0]) / 2;
-            const mz = (p1[1] + p2[1]) / 2;
-            const my = getTerrainHeight(terrainGeo, mx, mz);
-            const bar = new THREE.Mesh(
-                new THREE.BoxGeometry(len, 0.08, 0.08),
-                fenceMat
-            );
-            bar.position.set(mx, my + 0.55, mz);
-            bar.rotation.y = -Math.atan2(dz, dx);
-            group.add(bar);
-
-            const bar2 = new THREE.Mesh(
-                new THREE.BoxGeometry(len, 0.08, 0.08),
-                fenceMat
-            );
-            bar2.position.set(mx, my + 0.25, mz);
-            bar2.rotation.y = -Math.atan2(dz, dx);
-            group.add(bar2);
-        }
-        return group;
-    }
-
-    function createFieldRows(cx, cz, w, h, rotation, terrainGeo) {
-        const group = new THREE.Group();
-        const rows = Math.floor(h / 0.8);
-        for (let r = 0; r < rows; r++) {
-            const rz = -h / 2 + r * (h / rows);
-            const row = new THREE.Mesh(
-                new THREE.BoxGeometry(w * 0.9, 0.3, 0.3),
-                vineMat
-            );
-            const ry = getTerrainHeight(terrainGeo, cx, cz + rz);
-            row.position.set(0, 0.15, rz);
-            group.add(row);
-        }
-        const ty = getTerrainHeight(terrainGeo, cx, cz);
-        group.position.set(cx, ty, cz);
-        group.rotation.y = rotation || 0;
-        return group;
-    }
-
-    function createSignpost(x, z, text, terrainGeo, rotation = 0) {
-        const group = new THREE.Group();
-        const ty = getTerrainHeight(terrainGeo, x, z);
-
-        const post = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.08, 2, 6),
-            trunkMat
-        );
-        post.position.y = 1;
-        group.add(post);
-
-        const sign = new THREE.Mesh(
-            new THREE.BoxGeometry(2.5, 0.6, 0.1),
-            new THREE.MeshToonMaterial({ color: 0xfff8dc })
-        );
-        sign.position.set(0.5, 1.8, 0);
-        group.add(sign);
-
-        // Arrow
-        const arrow = new THREE.Mesh(
-            new THREE.ConeGeometry(0.3, 0.5, 3),
-            new THREE.MeshToonMaterial({ color: 0x8B5A2B })
-        );
-        arrow.position.set(1.9, 1.8, 0);
-        arrow.rotation.z = -Math.PI / 2;
-        group.add(arrow);
-
-        group.position.set(x, ty, z);
-        group.rotation.y = rotation;
-        return group;
-    }
-
-    function create3DText(text, x, y, z, size, color) {
-        // Use a sprite for text labels
+    // ═══════════════════════════════════════════════
+    // Helper: Text Label Sprite
+    // ═══════════════════════════════════════════════
+    function createLabel(text, x, y, z, size, color) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = 512;
         canvas.height = 128;
-        ctx.clearRect(0, 0, 512, 128);
 
-        ctx.font = `bold ${Math.floor(size * 30)}px "Comic Sans MS", cursive`;
+        ctx.font = `bold ${Math.floor(size * 28)}px "Comic Sans MS", cursive`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-
-        // Outline
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 5;
         ctx.strokeText(text, 256, 64);
-
-        // Fill
         ctx.fillStyle = color || '#4a2c0a';
         ctx.fillText(text, 256, 64);
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.minFilter = THREE.LinearFilter;
-        const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
-        const sprite = new THREE.Sprite(spriteMat);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
         sprite.position.set(x, y, z);
         sprite.scale.set(size * 8, size * 2, 1);
         return sprite;
     }
 
-    // ─── Build the Scene ───
-    const { terrain, geometry: terrainGeo } = createTerrain();
-    scene.add(terrain);
-
-    // ─── Pond ───
-    const pond = createPond(-5, -8, 5, 3.5, terrainGeo);
-    scene.add(pond);
-
-    // Small stream
-    const streamPts = [[-5, -4], [-7, -1], [-10, 2], [-14, 4], [-18, 5]];
-    scene.add(createPath(streamPts, 0.8, terrainGeo));
-    // Override with water material
-    const stream = createPath(streamPts, 0.7, terrainGeo);
-    stream.children.forEach(c => c.material = waterMat);
-    stream.children.forEach(c => c.position.y += 0.02);
-    scene.add(stream);
-
-    // ─── Forest Trees (left side) ───
-    const forestGroup = new THREE.Group();
-    for (let i = 0; i < 200; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const dist = Math.random() * 28;
-        const fx = -25 + Math.cos(angle) * dist;
-        const fz = -5 + Math.sin(angle) * dist;
-
-        // Keep trees within forest boundary
-        if (fx > 0 || Math.sqrt((fx + 25) ** 2 + (fz + 5) ** 2) > 30) continue;
-        // Avoid pond area
-        if (Math.sqrt((fx + 5) ** 2 + (fz + 8) ** 2) < 7) continue;
-
-        const h = 2.5 + Math.random() * 3;
-        const type = Math.random() > 0.3 ? 'round' : 'pine';
-        forestGroup.add(createCartoonTree(fx, fz, h, terrainGeo, type));
-    }
-    scene.add(forestGroup);
-
-    // ─── Scattered trees near village ───
-    const villageTrees = [
-        [8, -15], [12, -18], [5, 5], [15, 8],
-        [25, -15], [30, -10], [10, -8], [20, 5],
-        [-2, -20], [0, 5], [22, -20], [32, 2]
-    ];
-    villageTrees.forEach(([x, z]) => {
-        scene.add(createCartoonTree(x, z, 2 + Math.random() * 2, terrainGeo, 'round'));
-    });
-
-    // ─── Main Paths & Roads ───
-    // Main road through village
-    const mainRoad = [
-        [-10, -25], [-5, -20], [0, -15], [5, -12],
-        [10, -10], [15, -8], [20, -6], [25, -5],
-        [30, -4], [35, -3], [40, -2]
-    ];
-    scene.add(createRoad(mainRoad, 2, terrainGeo));
-
-    // Road to Autrêches (north)
-    const roadNorth = [[20, -6], [22, -12], [25, -18], [28, -25], [30, -30]];
-    scene.add(createRoad(roadNorth, 1.8, terrainGeo));
-
-    // Road to Hautebraye (south)
-    const roadSouth = [[5, -12], [3, -5], [0, 2], [-2, 10], [-5, 18], [-8, 25]];
-    scene.add(createRoad(roadSouth, 1.5, terrainGeo));
-
-    // Forest paths
-    const forestPath1 = [
-        [-5, -12], [-10, -10], [-15, -8], [-20, -5],
-        [-25, -2], [-30, 0], [-35, 2]
-    ];
-    scene.add(createPath(forestPath1, 1, terrainGeo));
-
-    const forestPath2 = [
-        [-15, -8], [-18, -12], [-22, -15], [-28, -18],
-        [-32, -15], [-35, -10]
-    ];
-    scene.add(createPath(forestPath2, 0.8, terrainGeo));
-
-    const forestPath3 = [
-        [-20, -5], [-22, 2], [-25, 8], [-30, 12], [-35, 10]
-    ];
-    scene.add(createPath(forestPath3, 0.8, terrainGeo));
-
-    // Path to Centre équestre
-    const pathEquestre = [[-35, 2], [-42, 5], [-48, 8], [-55, 10]];
-    scene.add(createPath(pathEquestre, 1.2, terrainGeo));
-
-    // ─── Village Houses (L'Hermitage) ───
-    const houses = [
-        { x: 12, z: -6, rotation: 0.3, roofMat: roofMat },
-        { x: 16, z: -4, rotation: -0.2, roofMat: roofBlueMat },
-        { x: 20, z: -3, rotation: 0.5, roofMat: roofBrownMat },
-        { x: 14, z: -2, rotation: -0.4, roofMat: roofMat },
-        { x: 18, z: -1, rotation: 0.1, roofMat: roofBlueMat },
-        { x: 22, z: -1, rotation: -0.3, roofMat: roofMat },
-        { x: 10, z: 0, rotation: 0.6, roofMat: roofBrownMat },
-        { x: 25, z: -8, rotation: -0.1, roofMat: roofBlueMat },
-        { x: 28, z: -6, rotation: 0.4, roofMat: roofMat },
-        // Isolated house (bottom center, like on the map)
-        { x: 8, z: 8, rotation: 0.2, roofMat: roofBrownMat, width: 3.5, height: 2.5 },
-    ];
-    houses.forEach(h => {
-        scene.add(createHouse(h.x, h.z, terrainGeo, h));
-    });
-
-    // ─── Centre Équestre (horse riding center) ───
-    // Large building
-    const stable = createHouse(-48, 8, terrainGeo, {
-        width: 5, height: 2.5, depth: 8, roofMat: roofBrownMat, wallMat: wallMat, rotation: 0.3
-    });
-    scene.add(stable);
-
-    // Paddock fence
-    scene.add(createFence([
-        [-52, 4], [-44, 2], [-42, 6], [-44, 12], [-52, 14], [-56, 10], [-52, 4]
-    ], terrainGeo));
-
-    // ─── Fields near Chevillecourt ───
-    scene.add(createFieldRows(35, 5, 8, 10, 0.2, terrainGeo));
-    scene.add(createFieldRows(42, 2, 6, 8, -0.1, terrainGeo));
-    scene.add(createFieldRows(38, 12, 7, 6, 0.3, terrainGeo));
-
-    // ─── Bushes & Flowers ───
-    for (let i = 0; i < 40; i++) {
-        const bx = -5 + Math.random() * 50;
-        const bz = -25 + Math.random() * 50;
-        // Avoid pond and buildings
-        if (Math.sqrt((bx + 5) ** 2 + (bz + 8) ** 2) < 8) continue;
-        scene.add(createBush(bx, bz, terrainGeo));
-    }
-
-    for (let i = 0; i < 80; i++) {
-        const fx = -10 + Math.random() * 45;
-        const fz = -20 + Math.random() * 40;
-        if (Math.sqrt((fx + 5) ** 2 + (fz + 8) ** 2) < 7) continue;
-        scene.add(createFlower(fx, fz, terrainGeo));
-    }
-
-    // ─── Signposts ───
-    scene.add(createSignpost(30, -28, 'Autrêches', terrainGeo, -0.5));
-    scene.add(createSignpost(38, -1, 'Chevillecourt', terrainGeo, 0));
-    scene.add(createSignpost(-7, 22, 'Hautebraye', terrainGeo, 2.5));
-    scene.add(createSignpost(-50, 6, 'Centre équestre', terrainGeo, Math.PI));
-
-    // ─── Text Labels ───
-    scene.add(create3DText("L'Hermitage", 16, 10, -5, 1.5, '#4a2c0a'));
-    scene.add(create3DText("La Forêt", -25, 14, -5, 1.3, '#1e4d1e'));
-    scene.add(create3DText("Autrêches →", 30, 8, -30, 1, '#6b3a1f'));
-    scene.add(create3DText("← Centre équestre", -48, 8, 16, 0.9, '#6b3a1f'));
-    scene.add(create3DText("Chevillecourt →", 38, 8, 5, 1, '#6b3a1f'));
-    scene.add(create3DText("↓ Hautebraye", -6, 8, 24, 1, '#6b3a1f'));
-
-    // ─── Clouds ───
-    function createCloud(x, y, z) {
+    // ═══════════════════════════════════════════════
+    // Helper: Pin Marker (for KML points)
+    // ═══════════════════════════════════════════════
+    function createPinMarker(x, z, color) {
         const group = new THREE.Group();
-        const cloudMat = new THREE.MeshToonMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
-        const parts = 4 + Math.floor(Math.random() * 3);
-        for (let i = 0; i < parts; i++) {
-            const r = 1.5 + Math.random() * 2;
-            const sphere = new THREE.Mesh(
-                new THREE.SphereGeometry(r, 7, 6),
-                cloudMat
-            );
-            sphere.position.set(
-                (Math.random() - 0.5) * 4,
-                (Math.random() - 0.5) * 1,
-                (Math.random() - 0.5) * 2
-            );
-            sphere.scale.y = 0.5;
-            group.add(sphere);
-        }
-        group.position.set(x, y, z);
+        const ty = terrainHeight(x, z);
+
+        // Pin pole
+        const pole = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.06, 3, 6),
+            new THREE.MeshToonMaterial({ color: 0x666666 })
+        );
+        pole.position.y = 1.5;
+        group.add(pole);
+
+        // Pin head (teardrop/balloon)
+        const head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.6, 10, 8),
+            new THREE.MeshToonMaterial({ color: color || 0xe74c3c })
+        );
+        head.position.y = 3.3;
+        head.castShadow = true;
+        group.add(head);
+
+        // White dot
+        const dot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2, 8, 6),
+            new THREE.MeshToonMaterial({ color: 0xffffff })
+        );
+        dot.position.set(0, 3.45, 0.45);
+        group.add(dot);
+
+        group.position.set(x, ty, z);
         return group;
     }
 
-    const clouds = [];
-    for (let i = 0; i < 8; i++) {
-        const cloud = createCloud(
-            -50 + Math.random() * 100,
-            30 + Math.random() * 15,
-            -40 + Math.random() * 60
+    // ═══════════════════════════════════════════════
+    // Unique Landmark Builders
+    // ═══════════════════════════════════════════════
+
+    // 🌿 Les jardins de l'Hermitage
+    function createGarden(place) {
+        const group = new THREE.Group();
+        const ty = terrainHeight(place.x, place.z);
+
+        // Garden beds in rows
+        const bedColors = [0xff6b9d, 0xffb347, 0xdda0dd, 0xffd700, 0xff69b4, 0x87ceeb];
+        for (let row = -2; row <= 2; row++) {
+            for (let col = -2; col <= 2; col++) {
+                // Earth bed
+                const bed = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.6, 0.3, 1.2),
+                    new THREE.MeshToonMaterial({ color: 0x6b4226 })
+                );
+                bed.position.set(col * 2.2, 0.15, row * 1.8);
+                bed.castShadow = true;
+                group.add(bed);
+
+                // Flowers / plants
+                const flowerCount = 3 + Math.floor(Math.random() * 3);
+                for (let f = 0; f < flowerCount; f++) {
+                    const fc = bedColors[Math.floor(Math.random() * bedColors.length)];
+                    const flower = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.18 + Math.random() * 0.1, 6, 5),
+                        new THREE.MeshToonMaterial({ color: fc })
+                    );
+                    flower.position.set(
+                        col * 2.2 + (Math.random() - 0.5) * 1.2,
+                        0.4 + Math.random() * 0.3,
+                        row * 1.8 + (Math.random() - 0.5) * 0.8
+                    );
+                    flower.castShadow = true;
+                    group.add(flower);
+                }
+            }
+        }
+
+        // Small stone wall around
+        const wallPts = [[-6, -5], [6, -5], [6, 5], [-6, 5], [-6, -5]];
+        for (let i = 0; i < wallPts.length - 1; i++) {
+            const [x1, z1] = wallPts[i];
+            const [x2, z2] = wallPts[i + 1];
+            const dx = x2 - x1, dz = z2 - z1;
+            const len = Math.sqrt(dx * dx + dz * dz);
+            const wall = new THREE.Mesh(
+                new THREE.BoxGeometry(len, 0.5, 0.3),
+                stoneMat
+            );
+            wall.position.set((x1 + x2) / 2, 0.25, (z1 + z2) / 2);
+            wall.rotation.y = -Math.atan2(dz, dx);
+            group.add(wall);
+        }
+
+        // Garden gate
+        const gate = new THREE.Mesh(
+            new THREE.BoxGeometry(1.5, 1.2, 0.15),
+            new THREE.MeshToonMaterial({ color: 0x228B22 })
         );
-        clouds.push(cloud);
-        scene.add(cloud);
+        gate.position.set(0, 0.6, -5);
+        group.add(gate);
+
+        group.position.set(place.x, ty, place.z);
+        return group;
     }
 
-    // ─── Decorative border ───
-    const borderGeo = new THREE.RingGeometry(68, 70, 64);
-    borderGeo.rotateX(-Math.PI / 2);
-    const borderMesh = new THREE.Mesh(borderGeo, new THREE.MeshToonMaterial({ color: 0x8B5A2B, side: THREE.DoubleSide }));
-    borderMesh.position.y = 0.1;
-    scene.add(borderMesh);
+    // 🔨 Les ateliers
+    function createWorkshop(place) {
+        const group = new THREE.Group();
+        const ty = terrainHeight(place.x, place.z);
 
-    // ─── Animation ───
+        // Main workshop building - longer, barn-like
+        const walls = new THREE.Mesh(
+            new THREE.BoxGeometry(6, 3, 4),
+            new THREE.MeshToonMaterial({ color: 0xe8d5b0 })
+        );
+        walls.position.y = 1.5;
+        walls.castShadow = true;
+        group.add(walls);
+
+        // Barn roof (triangular)
+        const roofShape = new THREE.Shape();
+        roofShape.moveTo(-3.5, 0);
+        roofShape.lineTo(0, 2);
+        roofShape.lineTo(3.5, 0);
+        roofShape.lineTo(-3.5, 0);
+        const roofGeo = new THREE.ExtrudeGeometry(roofShape, { depth: 4.4, bevelEnabled: false });
+        const roof = new THREE.Mesh(roofGeo, roofBrownMat);
+        roof.position.set(0, 3, -2.2);
+        roof.castShadow = true;
+        group.add(roof);
+
+        // Large door
+        const door = new THREE.Mesh(
+            new THREE.BoxGeometry(2, 2.5, 0.15),
+            new THREE.MeshToonMaterial({ color: 0x5a3a1a })
+        );
+        door.position.set(0, 1.25, 2.05);
+        group.add(door);
+
+        // Workshop windows
+        [-2, 2].forEach(wx => {
+            const win = new THREE.Mesh(
+                new THREE.BoxGeometry(0.8, 0.8, 0.1),
+                new THREE.MeshToonMaterial({ color: 0xffd700, transparent: true, opacity: 0.8 })
+            );
+            win.position.set(wx, 2, 2.05);
+            group.add(win);
+        });
+
+        // Chimney / kiln
+        const chimney = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.5, 2, 8),
+            stoneMat
+        );
+        chimney.position.set(2, 4.5, 0);
+        chimney.castShadow = true;
+        group.add(chimney);
+
+        // Small annex
+        const annex = new THREE.Mesh(
+            new THREE.BoxGeometry(2.5, 2, 3),
+            new THREE.MeshToonMaterial({ color: 0xdcc8a0 })
+        );
+        annex.position.set(-4.2, 1, 0);
+        annex.castShadow = true;
+        group.add(annex);
+
+        const annexRoof = new THREE.Mesh(
+            new THREE.ConeGeometry(2.3, 1.5, 4),
+            roofMat
+        );
+        annexRoof.position.set(-4.2, 2.75, 0);
+        annexRoof.rotation.y = Math.PI / 4;
+        group.add(annexRoof);
+
+        group.position.set(place.x, ty, place.z);
+        group.rotation.y = 0.3;
+        return group;
+    }
+
+    // 🏠 La grande maison
+    function createGrandeMaison(place) {
+        const group = new THREE.Group();
+        const ty = terrainHeight(place.x, place.z);
+
+        // Main building - large and stately
+        const walls = new THREE.Mesh(
+            new THREE.BoxGeometry(8, 4, 6),
+            wallMat
+        );
+        walls.position.y = 2;
+        walls.castShadow = true;
+        walls.receiveShadow = true;
+        group.add(walls);
+
+        // Mansard-style roof
+        const roofH = 2.5;
+        const roof = new THREE.Mesh(
+            new THREE.ConeGeometry(6, roofH, 4),
+            roofMat
+        );
+        roof.position.y = 4 + roofH / 2;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        group.add(roof);
+
+        // Windows (symmetrical facade)
+        const winMat = new THREE.MeshToonMaterial({ color: 0xadd8e6 });
+        for (let row = 0; row < 2; row++) {
+            for (let col = -2; col <= 2; col++) {
+                if (col === 0 && row === 0) continue; // door position
+                const win = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.7, 0.9, 0.1),
+                    winMat
+                );
+                win.position.set(col * 1.5, 1.5 + row * 1.8, 3.05);
+                group.add(win);
+            }
+        }
+
+        // Grand door
+        const door = new THREE.Mesh(
+            new THREE.BoxGeometry(1.2, 2.2, 0.15),
+            new THREE.MeshToonMaterial({ color: 0x4a2510 })
+        );
+        door.position.set(0, 1.1, 3.05);
+        group.add(door);
+
+        // Door arch
+        const arch = new THREE.Mesh(
+            new THREE.TorusGeometry(0.6, 0.1, 6, 12, Math.PI),
+            stoneMat
+        );
+        arch.position.set(0, 2.2, 3.1);
+        group.add(arch);
+
+        // Two chimneys
+        [-2, 2].forEach(cx => {
+            const chimney = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 1.8, 0.6),
+                stoneMat
+            );
+            chimney.position.set(cx, 5.5, 0);
+            chimney.castShadow = true;
+            group.add(chimney);
+        });
+
+        // Steps
+        for (let s = 0; s < 3; s++) {
+            const step = new THREE.Mesh(
+                new THREE.BoxGeometry(2.5 - s * 0.3, 0.2, 0.5),
+                stoneMat
+            );
+            step.position.set(0, s * 0.2, 3.5 + s * 0.5);
+            group.add(step);
+        }
+
+        group.position.set(place.x, ty, place.z);
+        group.rotation.y = -0.2;
+        return group;
+    }
+
+    // ⛺ Les tipis et cabanons
+    function createTipis(place) {
+        const group = new THREE.Group();
+        const ty = terrainHeight(place.x, place.z);
+
+        // 3 tipis
+        const tipiPositions = [[0, 0], [-4, 2], [3, 3]];
+        tipiPositions.forEach(([tx, tz], idx) => {
+            const tipiGroup = new THREE.Group();
+            const h = 3.5 + Math.random() * 0.5;
+            const r = 1.5;
+
+            // Tipi cone
+            const tipi = new THREE.Mesh(
+                new THREE.ConeGeometry(r, h, 8),
+                canvasMat
+            );
+            tipi.position.y = h / 2;
+            tipi.castShadow = true;
+            tipiGroup.add(tipi);
+
+            // Decorative stripes
+            const stripe = new THREE.Mesh(
+                new THREE.ConeGeometry(r * 1.01, h * 0.3, 8),
+                new THREE.MeshToonMaterial({ color: [0xcc4444, 0x4477aa, 0xc4943a][idx] })
+            );
+            stripe.position.y = h * 0.22;
+            tipiGroup.add(stripe);
+
+            // Poles sticking out top
+            for (let p = 0; p < 3; p++) {
+                const angle = (p / 3) * Math.PI * 2;
+                const pole = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.04, 0.04, 1.2, 4),
+                    tipiPoleMat
+                );
+                pole.position.set(Math.cos(angle) * 0.15, h + 0.3, Math.sin(angle) * 0.15);
+                pole.rotation.x = Math.cos(angle) * 0.2;
+                pole.rotation.z = Math.sin(angle) * 0.2;
+                tipiGroup.add(pole);
+            }
+
+            // Door opening
+            const doorFlap = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.6, 1.2),
+                new THREE.MeshToonMaterial({ color: 0x8B5A2B, side: THREE.DoubleSide })
+            );
+            doorFlap.position.set(0, 0.7, r - 0.05);
+            tipiGroup.add(doorFlap);
+
+            tipiGroup.position.set(tx, 0, tz);
+            tipiGroup.rotation.y = Math.random() * Math.PI * 2;
+            group.add(tipiGroup);
+        });
+
+        // 2 cabanons (small wooden sheds)
+        [[5, -2], [-3, -3]].forEach(([cx, cz]) => {
+            const cabin = new THREE.Group();
+            const cWalls = new THREE.Mesh(
+                new THREE.BoxGeometry(2, 1.8, 2),
+                new THREE.MeshToonMaterial({ color: 0xb8860b })
+            );
+            cWalls.position.y = 0.9;
+            cWalls.castShadow = true;
+            cabin.add(cWalls);
+
+            const cRoof = new THREE.Mesh(
+                new THREE.ConeGeometry(1.8, 1, 4),
+                new THREE.MeshToonMaterial({ color: 0x654321 })
+            );
+            cRoof.position.y = 2.3;
+            cRoof.rotation.y = Math.PI / 4;
+            cRoof.castShadow = true;
+            cabin.add(cRoof);
+
+            cabin.position.set(cx, 0, cz);
+            cabin.rotation.y = Math.random() * Math.PI;
+            group.add(cabin);
+        });
+
+        // Fire pit in center
+        const fireRing = new THREE.Mesh(
+            new THREE.TorusGeometry(0.6, 0.15, 6, 12),
+            stoneMat
+        );
+        fireRing.position.set(0, 0.1, 1.5);
+        fireRing.rotation.x = -Math.PI / 2;
+        group.add(fireRing);
+
+        group.position.set(place.x, ty, place.z);
+        return group;
+    }
+
+    // 🏡 La mère mitage (main homestead)
+    function createMereMitage(place) {
+        const group = new THREE.Group();
+        const ty = terrainHeight(place.x, place.z);
+
+        // Charming cottage
+        const walls = new THREE.Mesh(
+            new THREE.BoxGeometry(5, 3, 4),
+            wallPinkMat
+        );
+        walls.position.y = 1.5;
+        walls.castShadow = true;
+        group.add(walls);
+
+        // Thatched-style roof
+        const roof = new THREE.Mesh(
+            new THREE.ConeGeometry(4.2, 2.2, 4),
+            new THREE.MeshToonMaterial({ color: 0xb8860b })
+        );
+        roof.position.y = 4.1;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        group.add(roof);
+
+        // Welcoming door
+        const door = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 2, 0.15),
+            new THREE.MeshToonMaterial({ color: 0x8B0000 })
+        );
+        door.position.set(0, 1, 2.05);
+        group.add(door);
+
+        // Cute round windows
+        [-1.5, 1.5].forEach(wx => {
+            const win = new THREE.Mesh(
+                new THREE.CircleGeometry(0.4, 12),
+                new THREE.MeshToonMaterial({ color: 0xffd700 })
+            );
+            win.position.set(wx, 2.2, 2.05);
+            group.add(win);
+        });
+
+        // Chimney with smoke effect
+        const chimney = new THREE.Mesh(
+            new THREE.BoxGeometry(0.7, 1.8, 0.7),
+            new THREE.MeshToonMaterial({ color: 0x8b7355 })
+        );
+        chimney.position.set(1.5, 4.5, 0);
+        chimney.castShadow = true;
+        group.add(chimney);
+
+        // Garden fence around
+        const fencePts = [[-4, -3.5], [4, -3.5], [4, 3.5], [-4, 3.5], [-4, -3.5]];
+        for (let i = 0; i < fencePts.length - 1; i++) {
+            const [x1, z1] = fencePts[i];
+            const [x2, z2] = fencePts[i + 1];
+            const dx = x2 - x1, dz = z2 - z1;
+            const len = Math.sqrt(dx * dx + dz * dz);
+            const bar = new THREE.Mesh(
+                new THREE.BoxGeometry(len, 0.6, 0.08),
+                fenceMat
+            );
+            bar.position.set((x1 + x2) / 2, 0.4, (z1 + z2) / 2);
+            bar.rotation.y = -Math.atan2(dz, dx);
+            group.add(bar);
+        }
+
+        // Flower boxes
+        [-1.5, 1.5].forEach(wx => {
+            const box = new THREE.Mesh(
+                new THREE.BoxGeometry(0.8, 0.3, 0.3),
+                new THREE.MeshToonMaterial({ color: 0x654321 })
+            );
+            box.position.set(wx, 1.4, 2.2);
+            group.add(box);
+
+            for (let f = 0; f < 4; f++) {
+                const fl = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.1, 5, 4),
+                    new THREE.MeshToonMaterial({ color: flowerColors[Math.floor(Math.random() * flowerColors.length)] })
+                );
+                fl.position.set(wx + (f - 1.5) * 0.2, 1.6, 2.2);
+                group.add(fl);
+            }
+        });
+
+        group.position.set(place.x, ty, place.z);
+        group.rotation.y = 0.4;
+        return group;
+    }
+
+    // 🌄 Le plateau (lookout / clearing in forest)
+    function createPlateau(place) {
+        const group = new THREE.Group();
+        const ty = terrainHeight(place.x, place.z);
+
+        // Flat stone platform
+        const platform = new THREE.Mesh(
+            new THREE.CylinderGeometry(5, 5.5, 0.4, 12),
+            new THREE.MeshToonMaterial({ color: 0x9a9070 })
+        );
+        platform.position.y = 0.2;
+        platform.receiveShadow = true;
+        group.add(platform);
+
+        // Wooden bench
+        const benchSeat = new THREE.Mesh(
+            new THREE.BoxGeometry(2.5, 0.15, 0.6),
+            new THREE.MeshToonMaterial({ color: 0xa0784a })
+        );
+        benchSeat.position.set(0, 0.8, -2);
+        group.add(benchSeat);
+
+        const benchLegs = [-1, 1].map(s => {
+            const leg = new THREE.Mesh(
+                new THREE.BoxGeometry(0.1, 0.6, 0.6),
+                new THREE.MeshToonMaterial({ color: 0x8b6914 })
+            );
+            leg.position.set(s * 1, 0.5, -2);
+            return leg;
+        });
+        benchLegs.forEach(l => group.add(l));
+
+        // Info panel / viewpoint sign
+        const signPost = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.08, 2, 6),
+            trunkMat
+        );
+        signPost.position.set(2, 1, 0);
+        group.add(signPost);
+
+        const signBoard = new THREE.Mesh(
+            new THREE.BoxGeometry(1.8, 1, 0.08),
+            new THREE.MeshToonMaterial({ color: 0x654321 })
+        );
+        signBoard.position.set(2, 2.2, 0);
+        group.add(signBoard);
+
+        // Scattered rocks
+        for (let r = 0; r < 6; r++) {
+            const rock = new THREE.Mesh(
+                new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.4, 0),
+                stoneMat
+            );
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 3 + Math.random() * 2;
+            rock.position.set(Math.cos(angle) * dist, 0.2, Math.sin(angle) * dist);
+            rock.rotation.set(Math.random(), Math.random(), Math.random());
+            rock.castShadow = true;
+            group.add(rock);
+        }
+
+        group.position.set(place.x, ty, place.z);
+        return group;
+    }
+
+    // 🏚 La maison dans la forêt
+    function createForestHouse(place) {
+        const group = new THREE.Group();
+        const ty = terrainHeight(place.x, place.z);
+
+        // Cozy forest cottage
+        const walls = new THREE.Mesh(
+            new THREE.BoxGeometry(3.5, 2.5, 3),
+            new THREE.MeshToonMaterial({ color: 0xd2b48c })
+        );
+        walls.position.y = 1.25;
+        walls.castShadow = true;
+        group.add(walls);
+
+        // Mossy stone base
+        const base = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 0.4, 3.5),
+            new THREE.MeshToonMaterial({ color: 0x6b7a5a })
+        );
+        base.position.y = 0.2;
+        group.add(base);
+
+        // Roof with overhang
+        const roof = new THREE.Mesh(
+            new THREE.ConeGeometry(3.2, 2, 4),
+            new THREE.MeshToonMaterial({ color: 0x2d5a1e })
+        );
+        roof.position.y = 3.5;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        group.add(roof);
+
+        // Round hobbit-like door
+        const doorFrame = new THREE.Mesh(
+            new THREE.CircleGeometry(0.6, 12),
+            new THREE.MeshToonMaterial({ color: 0x4a2510 })
+        );
+        doorFrame.position.set(0, 0.9, 1.55);
+        group.add(doorFrame);
+
+        // Tiny windows
+        [-1, 1].forEach(s => {
+            const win = new THREE.Mesh(
+                new THREE.CircleGeometry(0.3, 8),
+                new THREE.MeshToonMaterial({ color: 0xffd700, transparent: true, opacity: 0.8 })
+            );
+            win.position.set(s * 1.1, 1.6, 1.55);
+            group.add(win);
+        });
+
+        // Chimney
+        const chimney = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.25, 0.3, 1.5, 6),
+            stoneMat
+        );
+        chimney.position.set(1, 4, -0.5);
+        chimney.castShadow = true;
+        group.add(chimney);
+
+        // Surrounding mushrooms
+        for (let m = 0; m < 5; m++) {
+            const mush = new THREE.Group();
+            const stem = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.08, 0.25, 5),
+                new THREE.MeshToonMaterial({ color: 0xfff8dc })
+            );
+            stem.position.y = 0.125;
+            mush.add(stem);
+
+            const cap = new THREE.Mesh(
+                new THREE.SphereGeometry(0.15, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2),
+                new THREE.MeshToonMaterial({ color: [0xff4444, 0xff8c00, 0x8B4513][m % 3] })
+            );
+            cap.position.y = 0.25;
+            mush.add(cap);
+
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 2 + Math.random() * 1.5;
+            mush.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+            group.add(mush);
+        }
+
+        // Woodpile
+        for (let l = 0; l < 4; l++) {
+            const log = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.1, 0.1, 1.2, 5),
+                trunkMat
+            );
+            log.position.set(-2.2, 0.15 + l * 0.2, -0.5 + l * 0.05);
+            log.rotation.z = Math.PI / 2;
+            group.add(log);
+        }
+
+        group.position.set(place.x, ty, place.z);
+        group.rotation.y = 0.8;
+        return group;
+    }
+
+    // ═══════════════════════════════════════════════
+    // Build all KML Landmarks
+    // ═══════════════════════════════════════════════
+    const pinColors = {
+        garden: 0x27ae60,
+        workshop: 0xe67e22,
+        grande_maison: 0xe74c3c,
+        tipis: 0x9b59b6,
+        mere_mitage: 0xf39c12,
+        plateau: 0x3498db,
+        forest_house: 0x1abc9c,
+    };
+
+    const interactiveObjects = [];
+
+    KML_PLACES.forEach(place => {
+        // Pin marker
+        const pin = createPinMarker(place.x, place.z, pinColors[place.type]);
+        scene.add(pin);
+        interactiveObjects.push({ mesh: pin, name: place.name });
+
+        // Label
+        const ty = terrainHeight(place.x, place.z);
+        scene.add(createLabel(place.name, place.x, ty + 7, place.z, 0.9, '#4a2c0a'));
+
+        // Unique 3D object per type
+        switch (place.type) {
+            case 'garden': scene.add(createGarden(place)); break;
+            case 'workshop': scene.add(createWorkshop(place)); break;
+            case 'grande_maison': scene.add(createGrandeMaison(place)); break;
+            case 'tipis': scene.add(createTipis(place)); break;
+            case 'mere_mitage': scene.add(createMereMitage(place)); break;
+            case 'plateau': scene.add(createPlateau(place)); break;
+            case 'forest_house': scene.add(createForestHouse(place)); break;
+        }
+    });
+
+    // ═══════════════════════════════════════════════
+    // Forest (around plateau & forest house)
+    // ═══════════════════════════════════════════════
+    const plateauP = KML_PLACES.find(p => p.type === 'plateau');
+    const forestHouseP = KML_PLACES.find(p => p.type === 'forest_house');
+    const fcx = (plateauP.x + forestHouseP.x) / 2;
+    const fcz = (plateauP.z + forestHouseP.z) / 2;
+
+    for (let i = 0; i < 250; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 2 + Math.random() * 28;
+        const fx = fcx + Math.cos(angle) * dist;
+        const fz = fcz + Math.sin(angle) * dist;
+
+        if (fx > 10) continue; // Forest stays on west side
+        if (Math.sqrt((fx - fcx) ** 2 + (fz - fcz) ** 2) > 30) continue;
+
+        // Avoid KML landmarks
+        let tooClose = false;
+        for (const p of KML_PLACES) {
+            if (Math.sqrt((fx - p.x) ** 2 + (fz - p.z) ** 2) < 5) { tooClose = true; break; }
+        }
+        if (tooClose) continue;
+
+        const h = 2 + Math.random() * 3.5;
+        const type = Math.random() > 0.3 ? 'round' : 'pine';
+        scene.add(createCartoonTree(fx, fz, h, type));
+    }
+
+    // Scattered trees elsewhere
+    for (let i = 0; i < 40; i++) {
+        const tx = -20 + Math.random() * 70;
+        const tz = -50 + Math.random() * 100;
+        if (tx < 10 && Math.sqrt((tx - fcx) ** 2 + (tz - fcz) ** 2) < 30) continue;
+
+        let tooClose = false;
+        for (const p of KML_PLACES) {
+            if (Math.sqrt((tx - p.x) ** 2 + (tz - p.z) ** 2) < 6) { tooClose = true; break; }
+        }
+        if (tooClose) continue;
+
+        scene.add(createCartoonTree(tx, tz, 1.8 + Math.random() * 2, 'round'));
+    }
+
+    // ═══════════════════════════════════════════════
+    // Paths connecting KML landmarks
+    // ═══════════════════════════════════════════════
+    const ateliers = KML_PLACES.find(p => p.type === 'workshop');
+    const grandeMaison = KML_PLACES.find(p => p.type === 'grande_maison');
+    const tipis = KML_PLACES.find(p => p.type === 'tipis');
+    const mereMitage = KML_PLACES.find(p => p.type === 'mere_mitage');
+    const jardins = KML_PLACES.find(p => p.type === 'garden');
+    const forestHouse = KML_PLACES.find(p => p.type === 'forest_house');
+    const plateau = KML_PLACES.find(p => p.type === 'plateau');
+
+    // Main path: Jardins → Ateliers → Grande Maison → Mère Mitage
+    scene.add(createPathSegments([
+        [jardins.x, jardins.z],
+        [jardins.x + 3, jardins.z - 8],
+        [ateliers.x - 2, ateliers.z + 4],
+        [ateliers.x, ateliers.z],
+    ], 1.5, roadMat));
+
+    scene.add(createPathSegments([
+        [ateliers.x, ateliers.z],
+        [ateliers.x + 5, ateliers.z - 3],
+        [grandeMaison.x - 3, grandeMaison.z + 2],
+        [grandeMaison.x, grandeMaison.z],
+    ], 1.5, roadMat));
+
+    scene.add(createPathSegments([
+        [grandeMaison.x, grandeMaison.z],
+        [grandeMaison.x + 1, grandeMaison.z - 4],
+        [mereMitage.x, mereMitage.z + 3],
+        [mereMitage.x, mereMitage.z],
+    ], 1.2, roadMat));
+
+    // Path to tipis
+    scene.add(createPathSegments([
+        [ateliers.x, ateliers.z],
+        [ateliers.x - 5, ateliers.z - 5],
+        [tipis.x + 4, tipis.z + 5],
+        [tipis.x, tipis.z],
+    ], 1, pathMat));
+
+    // Forest path: Ateliers → Forest House → Plateau
+    scene.add(createPathSegments([
+        [ateliers.x, ateliers.z],
+        [ateliers.x - 6, ateliers.z + 1],
+        [forestHouse.x + 4, forestHouse.z - 1],
+        [forestHouse.x, forestHouse.z],
+    ], 0.8, pathMat));
+
+    scene.add(createPathSegments([
+        [forestHouse.x, forestHouse.z],
+        [forestHouse.x - 3, forestHouse.z - 4],
+        [plateau.x + 2, plateau.z + 3],
+        [plateau.x, plateau.z],
+    ], 0.8, pathMat));
+
+    // Tipis to Plateau (through forest)
+    scene.add(createPathSegments([
+        [tipis.x, tipis.z],
+        [tipis.x - 4, tipis.z + 5],
+        [plateau.x + 2, plateau.z - 5],
+        [plateau.x, plateau.z],
+    ], 0.7, pathMat));
+
+    // ═══════════════════════════════════════════════
+    // Pond (between forest house and jardins)
+    // ═══════════════════════════════════════════════
+    const pondX = (forestHouse.x + jardins.x) / 2 - 3;
+    const pondZ = (forestHouse.z + jardins.z) / 2;
+    const pondTy = terrainHeight(pondX, pondZ) - 0.3;
+    const pondGeo = new THREE.CircleGeometry(4, 24);
+    pondGeo.rotateX(-Math.PI / 2);
+    const pond = new THREE.Mesh(pondGeo, waterMat);
+    pond.position.set(pondX, pondTy, pondZ);
+    pond.scale.set(1.3, 1, 0.8);
+    scene.add(pond);
+
+    // ═══════════════════════════════════════════════
+    // Bushes & Flowers scattered
+    // ═══════════════════════════════════════════════
+    for (let i = 0; i < 50; i++) {
+        const bx = -35 + Math.random() * 70;
+        const bz = -50 + Math.random() * 95;
+        let skip = false;
+        for (const p of KML_PLACES) {
+            if (Math.sqrt((bx - p.x) ** 2 + (bz - p.z) ** 2) < 5) { skip = true; break; }
+        }
+        if (skip) continue;
+
+        const group = new THREE.Group();
+        const ty = terrainHeight(bx, bz);
+        const cnt = 2 + Math.floor(Math.random() * 2);
+        for (let j = 0; j < cnt; j++) {
+            const r = 0.3 + Math.random() * 0.4;
+            const bush = new THREE.Mesh(
+                new THREE.SphereGeometry(r, 6, 5),
+                [leafMat, darkLeafMat, lightLeafMat][Math.floor(Math.random() * 3)]
+            );
+            bush.position.set((Math.random() - 0.5) * 0.8, r * 0.6, (Math.random() - 0.5) * 0.8);
+            bush.castShadow = true;
+            group.add(bush);
+        }
+        group.position.set(bx, ty, bz);
+        scene.add(group);
+    }
+
+    for (let i = 0; i < 100; i++) {
+        const fx = -30 + Math.random() * 65;
+        const fz = -45 + Math.random() * 90;
+        const ty = terrainHeight(fx, fz);
+        const fc = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+
+        const stem = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.02, 0.02, 0.35, 3),
+            new THREE.MeshToonMaterial({ color: 0x228B22 })
+        );
+        stem.position.set(fx, ty + 0.175, fz);
+        scene.add(stem);
+
+        const petal = new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 5, 4),
+            new THREE.MeshToonMaterial({ color: fc })
+        );
+        petal.position.set(fx, ty + 0.42, fz);
+        petal.scale.y = 0.6;
+        scene.add(petal);
+    }
+
+    // ═══════════════════════════════════════════════
+    // Direction signs at edges
+    // ═══════════════════════════════════════════════
+    scene.add(createLabel("Autr\u00eaches \u2191", 25, 12, -48, 1.1, '#6b3a1f'));
+    scene.add(createLabel("\u2190 Centre \u00e9questre", -40, 12, -10, 1, '#6b3a1f'));
+    scene.add(createLabel("Chevillecourt \u2192", 40, 12, -15, 1, '#6b3a1f'));
+    scene.add(createLabel("\u2193 Hautebraye", 0, 12, 48, 1.1, '#6b3a1f'));
+
+    // Title label in sky
+    scene.add(createLabel("L'Hermitage et la For\u00eat", 0, 25, -40, 2, '#4a2c0a'));
+
+    // ═══════════════════════════════════════════════
+    // Clouds
+    // ═══════════════════════════════════════════════
+    const clouds = [];
+    const cloudMat = new THREE.MeshToonMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
+    for (let i = 0; i < 8; i++) {
+        const group = new THREE.Group();
+        const parts = 4 + Math.floor(Math.random() * 3);
+        for (let j = 0; j < parts; j++) {
+            const r = 1.5 + Math.random() * 2;
+            const sphere = new THREE.Mesh(new THREE.SphereGeometry(r, 7, 6), cloudMat);
+            sphere.position.set((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 2);
+            sphere.scale.y = 0.5;
+            group.add(sphere);
+        }
+        group.position.set(-60 + Math.random() * 120, 28 + Math.random() * 15, -50 + Math.random() * 80);
+        clouds.push(group);
+        scene.add(group);
+    }
+
+    // ═══════════════════════════════════════════════
+    // Tooltip on hover
+    // ═══════════════════════════════════════════════
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const tooltipEl = document.getElementById('tooltip');
+
+    renderer.domElement.addEventListener('mousemove', (e) => {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        let found = false;
+        for (const obj of interactiveObjects) {
+            const intersects = raycaster.intersectObjects(obj.mesh.children, true);
+            if (intersects.length > 0) {
+                tooltipEl.style.display = 'block';
+                tooltipEl.style.left = (e.clientX + 15) + 'px';
+                tooltipEl.style.top = (e.clientY - 10) + 'px';
+                tooltipEl.textContent = obj.name;
+                found = true;
+                break;
+            }
+        }
+        if (!found) tooltipEl.style.display = 'none';
+    });
+
+    // ═══════════════════════════════════════════════
+    // Animation Loop
+    // ═══════════════════════════════════════════════
     document.getElementById('loading').style.display = 'none';
 
     let time = 0;
@@ -799,23 +1276,25 @@
         requestAnimationFrame(animate);
         time += 0.005;
 
-        // Animate clouds
-        clouds.forEach((cloud, i) => {
-            cloud.position.x += 0.01 + i * 0.002;
-            if (cloud.position.x > 60) cloud.position.x = -60;
+        clouds.forEach((c, i) => {
+            c.position.x += 0.008 + i * 0.002;
+            if (c.position.x > 70) c.position.x = -70;
         });
 
-        // Gentle water animation
-        if (pond) {
-            pond.material.opacity = 0.8 + Math.sin(time * 3) * 0.05;
-        }
+        if (pond) pond.material.opacity = 0.8 + Math.sin(time * 3) * 0.05;
+
+        // Gentle pin bobbing
+        interactiveObjects.forEach((obj, i) => {
+            const pinHead = obj.mesh.children[1];
+            if (pinHead) pinHead.position.y = 3.3 + Math.sin(time * 2 + i) * 0.15;
+        });
 
         controls.update();
         renderer.render(scene, camera);
     }
     animate();
 
-    // ─── Resize ───
+    // Resize
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
