@@ -32,6 +32,41 @@
             font-size: 0.95em; pointer-events: none; z-index: 15;
             box-shadow: 3px 3px 0 rgba(0,0,0,0.15);
         }
+        #panoramax-btn {
+            position: absolute; top: 18px; right: 18px; z-index: 10;
+            background: #fff; color: #2a1a00; border: 2.5px solid #2a1a00;
+            padding: 8px 16px; border-radius: 16px; cursor: pointer;
+            font-family: 'Comic Sans MS', cursive; font-size: 0.9em;
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.15);
+            transition: background 0.2s;
+        }
+        #panoramax-btn:hover { background: #f0e8d0; }
+        #panoramax-btn.active { background: #5dbd3a; color: #fff; border-color: #3a8a1a; }
+        #panoramax-status {
+            position: absolute; top: 60px; right: 18px; z-index: 10;
+            background: rgba(255,255,255,0.92); color: #2a1a00;
+            padding: 6px 14px; border-radius: 12px; border: 2px solid #2a1a00;
+            font-family: 'Comic Sans MS', cursive; font-size: 0.8em;
+            display: none;
+        }
+        #photo-viewer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 100; display: none;
+            justify-content: center; align-items: center; flex-direction: column;
+            cursor: pointer;
+        }
+        #photo-viewer img {
+            max-width: 90%; max-height: 80%; border-radius: 12px;
+            border: 4px solid #fff; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        #photo-viewer .caption {
+            color: #fff; font-family: 'Comic Sans MS', cursive;
+            margin-top: 12px; font-size: 1em; text-align: center;
+        }
+        #photo-viewer .close-hint {
+            color: rgba(255,255,255,0.6); font-family: 'Comic Sans MS', cursive;
+            margin-top: 8px; font-size: 0.8em;
+        }
     </style>
 </head>
 <body>
@@ -39,6 +74,13 @@
     <div id="controls">Clic gauche: tourner | Molette: zoom | Clic droit: d&eacute;placer</div>
     <div id="loading">Chargement de la carte...</div>
     <div id="tooltip"></div>
+    <button id="panoramax-btn" title="Afficher les photos Panoramax">Photos</button>
+    <div id="panoramax-status"></div>
+    <div id="photo-viewer" onclick="this.style.display='none'">
+        <img id="photo-viewer-img" src="" alt="">
+        <div class="caption" id="photo-viewer-caption"></div>
+        <div class="close-hint">Cliquer pour fermer</div>
+    </div>
 
     <script type="importmap">
     {
@@ -1007,6 +1049,200 @@
     });
 
     // ═══════════════════════════════════════════
+    // Panoramax street-level images
+    // ═══════════════════════════════════════════
+    const PANORAMAX_API = 'https://api.panoramax.xyz/api';
+    const PANORAMAX_BBOX = [3.125, 49.434, 3.132, 49.440]; // around L'Hermitage
+    const photoGroup = new THREE.Group();
+    photoGroup.visible = false;
+    scene.add(photoGroup);
+
+    const photoObjects = []; // for raycasting
+    let panoramaxLoaded = false;
+
+    // Create a photo panel billboard in the 3D scene
+    function mkPhotoPanel(imageUrl, thumbUrl, worldX, worldZ, heading, caption) {
+        const g = new THREE.Group();
+        const ty = terrH(worldX, worldZ);
+
+        // Pole
+        const pole = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.06, 4, 8),
+            toon(0x666666)
+        );
+        pole.position.y = 2;
+        g.add(pole);
+
+        // Photo frame (initially white, texture loaded async)
+        const pw = 2.8, ph = 2;
+        const frameMat = new THREE.MeshToonMaterial({
+            color: 0xffffff, gradientMap: toonTex, side: THREE.DoubleSide
+        });
+        const frame = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), frameMat);
+        frame.position.y = 4.5;
+        frame.castShadow = true;
+        g.add(frame);
+
+        // Load thumbnail texture
+        const loader = new THREE.TextureLoader();
+        loader.crossOrigin = 'anonymous';
+        loader.load(thumbUrl, (tex) => {
+            tex.colorSpace = THREE.SRGBColorSpace;
+            frameMat.map = tex;
+            frameMat.needsUpdate = true;
+        });
+
+        // BD-style white border frame
+        const border = new THREE.Mesh(
+            new THREE.PlaneGeometry(pw + 0.3, ph + 0.3),
+            new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: toonTex, side: THREE.DoubleSide })
+        );
+        border.position.y = 4.5;
+        border.position.z = -0.02;
+        g.add(border);
+
+        // Dark outline border
+        const outline = new THREE.Mesh(
+            new THREE.PlaneGeometry(pw + 0.45, ph + 0.45),
+            new THREE.MeshToonMaterial({ color: 0x2a1a00, gradientMap: toonTex, side: THREE.DoubleSide })
+        );
+        outline.position.y = 4.5;
+        outline.position.z = -0.04;
+        g.add(outline);
+
+        // Panoramax icon dot at top
+        const dot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.22, 12, 8),
+            toon(0x3498db)
+        );
+        dot.position.y = 5.7;
+        g.add(dot);
+
+        g.position.set(worldX, ty, worldZ);
+
+        // Store metadata
+        g.userData = { imageUrl, caption, frame };
+
+        return g;
+    }
+
+    // Fetch and display Panoramax images
+    async function loadPanoramaxImages() {
+        const statusEl = document.getElementById('panoramax-status');
+        statusEl.style.display = 'block';
+        statusEl.textContent = 'Chargement des photos...';
+
+        try {
+            const bbox = PANORAMAX_BBOX.join(',');
+            const url = `${PANORAMAX_API}/search?bbox=${bbox}&limit=50`;
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error(`API ${resp.status}`);
+            const data = await resp.json();
+
+            if (!data.features || data.features.length === 0) {
+                statusEl.textContent = 'Aucune photo trouv\u00e9e dans cette zone';
+                setTimeout(() => statusEl.style.display = 'none', 3000);
+                return;
+            }
+
+            // Deduplicate: keep one image per ~15m grid cell to avoid clutter
+            const gridSize = 0.00015; // ~15m in degrees
+            const seen = new Set();
+            const filtered = [];
+            for (const f of data.features) {
+                const [lon, lat] = f.geometry.coordinates;
+                const key = `${Math.round(lon/gridSize)}_${Math.round(lat/gridSize)}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    filtered.push(f);
+                }
+            }
+
+            let count = 0;
+            for (const feature of filtered) {
+                const [lon, lat] = feature.geometry.coordinates;
+                const { x: wx, z: wz } = gps(lon, lat);
+
+                // Skip if too far from scene center
+                if (Math.abs(wx) > 70 || Math.abs(wz) > 70) continue;
+
+                const id = feature.id;
+                const thumbUrl = feature.assets?.thumb?.href
+                    || feature.assets?.sd?.href
+                    || `${PANORAMAX_API}/pictures/${id}/thumb.jpg`;
+                const hdUrl = feature.assets?.hd?.href
+                    || feature.assets?.sd?.href
+                    || `${PANORAMAX_API}/pictures/${id}/sd.jpg`;
+
+                const heading = feature.properties?.['view:azimuth'] || 0;
+                const date = feature.properties?.datetime
+                    ? new Date(feature.properties.datetime).toLocaleDateString('fr-FR')
+                    : '';
+                const caption = date ? `Panoramax - ${date}` : 'Panoramax';
+
+                const panel = mkPhotoPanel(hdUrl, thumbUrl, wx, wz, heading, caption);
+                photoGroup.add(panel);
+                photoObjects.push(panel);
+                count++;
+            }
+
+            statusEl.textContent = `${count} photo${count > 1 ? 's' : ''} charg\u00e9e${count > 1 ? 's' : ''}`;
+            panoramaxLoaded = true;
+            setTimeout(() => statusEl.style.display = 'none', 3000);
+        } catch (err) {
+            console.error('Panoramax error:', err);
+            statusEl.textContent = 'Erreur de chargement des photos';
+            setTimeout(() => statusEl.style.display = 'none', 4000);
+        }
+    }
+
+    // Toggle button
+    const panoramaxBtn = document.getElementById('panoramax-btn');
+    panoramaxBtn.addEventListener('click', () => {
+        if (!panoramaxLoaded) {
+            loadPanoramaxImages().then(() => {
+                photoGroup.visible = true;
+                panoramaxBtn.classList.add('active');
+            });
+        } else {
+            photoGroup.visible = !photoGroup.visible;
+            panoramaxBtn.classList.toggle('active');
+        }
+    });
+
+    // Click on photo panels to open full view
+    renderer.domElement.addEventListener('click', (e) => {
+        if (!photoGroup.visible || photoObjects.length === 0) return;
+        const m = new THREE.Vector2(
+            (e.clientX / innerWidth) * 2 - 1,
+            -(e.clientY / innerHeight) * 2 + 1
+        );
+        const rc = new THREE.Raycaster();
+        rc.setFromCamera(m, camera);
+
+        for (const panel of photoObjects) {
+            const hits = rc.intersectObjects(panel.children, true);
+            if (hits.length > 0) {
+                const viewer = document.getElementById('photo-viewer');
+                const img = document.getElementById('photo-viewer-img');
+                const cap = document.getElementById('photo-viewer-caption');
+                img.src = panel.userData.imageUrl;
+                cap.textContent = panel.userData.caption;
+                viewer.style.display = 'flex';
+                break;
+            }
+        }
+    });
+
+    // Make photo panels always face the camera (billboard)
+    function updatePhotoPanels() {
+        if (!photoGroup.visible) return;
+        for (const panel of photoObjects) {
+            panel.lookAt(camera.position.x, panel.position.y, camera.position.z);
+        }
+    }
+
+    // ═══════════════════════════════════════════
     // Animation
     // ═══════════════════════════════════════════
     document.getElementById('loading').style.display = 'none';
@@ -1021,6 +1257,7 @@
             const h = o.mesh.children[1];
             if (h) h.position.y = 3.4 + Math.sin(time*2+i)*0.18;
         });
+        updatePhotoPanels();
         controls.update();
         composer.render();
     }
