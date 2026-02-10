@@ -1870,11 +1870,19 @@ function updateMap() {
     markers.push(polyline);
   }
 
-  // Fit bounds (include user position if available)
-  if (STOPS.length > 0) {
-    const pts = STOPS.map(s => [s.lat, s.lng]);
-    if (userMarker) pts.push(userMarker.getLatLng());
-    const bounds = L.latLngBounds(pts);
+  // Center on last discovered pinpoint
+  const order = gameState.shuffleOrder || STOPS.map((_, i) => i);
+  let lastVisited = null;
+  for (let s = order.length - 1; s >= 0; s--) {
+    if (gameState.visitedIndices.includes(order[s])) {
+      lastVisited = STOPS[order[s]];
+      break;
+    }
+  }
+  if (lastVisited) {
+    map.setView([lastVisited.lat, lastVisited.lng], 17);
+  } else if (STOPS.length > 0) {
+    const bounds = L.latLngBounds(STOPS.map(s => [s.lat, s.lng]));
     map.fitBounds(bounds, { padding: [40, 40] });
   }
 }
