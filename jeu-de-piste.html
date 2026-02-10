@@ -1522,7 +1522,8 @@ function updateMap() {
 
     const marker = L.marker([stop.lat, stop.lng], { icon }).addTo(map);
 
-    // Popup content
+    // Popup content depends on context: from reveal screen = view-only
+    const isViewOnly = previousScreen === 'reveal-screen';
     let popupHTML = '';
     if (isVisited) {
       popupHTML = `<div class="popup-content">
@@ -1535,8 +1536,14 @@ function updateMap() {
         <h3>${stop.name}</h3>
         <p>Parcours termine</p>
       </div>`;
+    } else if (isViewOnly) {
+      // From reveal screen: no guessing allowed
+      popupHTML = `<div class="popup-content">
+        <h3>&#x1F512; ${stop.name}</h3>
+        <p>Vous devez afficher l'indice suivant</p>
+      </div>`;
     } else {
-      // All locked points show their name + a "C'est ici ?" button
+      // From clue screen: guessing allowed
       popupHTML = `<div class="popup-content">
         <h3>&#x1F512; ${stop.name}</h3>
         <p>${isWrongGuess ? 'Deja tente...' : 'Est-ce le lieu de l\'indice ?'}</p>
