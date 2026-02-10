@@ -875,8 +875,13 @@
     <h3>Ce n'est pas le bon lieu !</h3>
     <p id="wrong-modal-text">Relisez l'indice et essayez un autre point sur la carte.</p>
     <button class="btn btn-outline" onclick="closeWrongModal()">
-      Reessayer
+      Reessayer sur la carte
     </button>
+    <div style="margin-top:0.6rem;">
+      <button class="btn btn-primary btn-sm" onclick="closeWrongModal(); goToClue();">
+        &#x1F50D; Revoir l'indice
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1302,6 +1307,10 @@ function goBackFromMap() {
   showScreen(previousScreen);
 }
 
+function goToClue() {
+  showScreen('clue-screen');
+}
+
 // ═══════════════════════════════════════════════
 // GAME LOGIC
 // ═══════════════════════════════════════════════
@@ -1541,15 +1550,19 @@ function updateMap() {
       popupHTML = `<div class="popup-content">
         <h3>&#x1F512; ${stop.name}</h3>
         <p>Vous devez afficher l'indice suivant</p>
+        <button class="btn btn-outline btn-sm" onclick="map.closePopup(); goBackFromMap();">
+          &#x2190; Retour
+        </button>
       </div>`;
     } else {
       // From clue screen: guessing allowed
       popupHTML = `<div class="popup-content">
         <h3>&#x1F512; ${stop.name}</h3>
-        <p>${isWrongGuess ? 'Deja tente...' : 'Est-ce le lieu de l\'indice ?'}</p>
-        <button class="btn btn-primary btn-sm" onclick="tryGuess(${i})"${isWrongGuess ? ' disabled style="opacity:0.4;cursor:not-allowed;"' : ''}>
-          ${isWrongGuess ? 'Deja essaye' : 'C\'est ici !'}
-        </button>
+        <p>${isWrongGuess ? 'Ce n\'est pas le bon lieu.' : 'Est-ce le lieu de l\'indice ?'}</p>
+        ${isWrongGuess
+          ? `<button class="btn btn-outline btn-sm" onclick="map.closePopup(); goToClue();">&#x1F50D; Revoir l'indice</button>`
+          : `<button class="btn btn-primary btn-sm" onclick="tryGuess(${i})">C'est ici !</button>`
+        }
       </div>`;
     }
 
