@@ -589,6 +589,20 @@
     background: var(--locked);
     color: white;
   }
+  .user-location {
+    width: 16px;
+    height: 16px;
+    background: #4285F4;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.4), 0 1px 4px rgba(0,0,0,0.3);
+    animation: user-pulse 2s ease-out infinite;
+  }
+  @keyframes user-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.4), 0 1px 4px rgba(0,0,0,0.3); }
+    70% { box-shadow: 0 0 0 12px rgba(66, 133, 244, 0), 0 1px 4px rgba(0,0,0,0.3); }
+    100% { box-shadow: 0 0 0 0 rgba(66, 133, 244, 0), 0 1px 4px rgba(0,0,0,0.3); }
+  }
 
   /* ── Arrival Modal ── */
   .modal-overlay {
@@ -1729,6 +1743,7 @@ function resetGame() {
 // ═══════════════════════════════════════════════
 let map = null;
 let markers = [];
+let userMarker = null;
 
 function initMap() {
   map = L.map('map-container', {
@@ -1824,9 +1839,11 @@ function updateMap() {
     markers.push(polyline);
   }
 
-  // Fit bounds
+  // Fit bounds (include user position if available)
   if (STOPS.length > 0) {
-    const bounds = L.latLngBounds(STOPS.map(s => [s.lat, s.lng]));
+    const pts = STOPS.map(s => [s.lat, s.lng]);
+    if (userMarker) pts.push(userMarker.getLatLng());
+    const bounds = L.latLngBounds(pts);
     map.fitBounds(bounds, { padding: [40, 40] });
   }
 }
@@ -1857,6 +1874,9 @@ function startGeolocation() {
         ${isNear ? 'Vous y etes !' : 'du prochain point'}
       </div>`;
 
+      // Update user location marker on the map
+      updateUserMarker(latitude, longitude);
+
       if (isNear && !gameState.visitedIndices.includes(gameState.currentIndex)) {
         showArrivalModal();
       }
@@ -1874,6 +1894,23 @@ function haversine(lat1, lon1, lat2, lon2) {
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function updateUserMarker(lat, lng) {
+  if (!map) return;
+  const latlng = L.latLng(lat, lng);
+  if (userMarker) {
+    userMarker.setLatLng(latlng);
+  } else {
+    const icon = L.divIcon({
+      className: '',
+      html: '<div class="user-location"></div>',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
+    });
+    userMarker = L.marker(latlng, { icon, zIndexOffset: 1000 }).addTo(map);
+    userMarker.bindTooltip('Vous', { direction: 'top', offset: [0, -10] });
+  }
 }
 
 // ═══════════════════════════════════════════════
