@@ -681,6 +681,96 @@
     color: white;
   }
 
+  /* ── Scoring ── */
+  .score-result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #fefae0 0%, #fff8e1 100%);
+    border-radius: var(--radius);
+    border: 2px solid var(--accent);
+  }
+  .score-stars {
+    font-size: 1.8rem;
+    letter-spacing: 0.2rem;
+  }
+  .score-stars .star-off {
+    opacity: 0.2;
+  }
+  .score-points {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: var(--primary-dark);
+  }
+  .score-label {
+    font-size: 0.85rem;
+    color: var(--accent-dark);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .score-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+  }
+  .score-inline .stars {
+    letter-spacing: 0.1rem;
+  }
+  .score-inline .stars .star-off {
+    opacity: 0.2;
+  }
+  .score-inline .pts {
+    font-weight: bold;
+    color: var(--primary);
+  }
+
+  /* End screen score */
+  .end-total-score {
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    border-radius: var(--radius);
+    padding: 1.2rem 2rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+    max-width: 360px;
+  }
+  .end-total-score .total-pts {
+    font-size: 2.5rem;
+    font-weight: bold;
+    display: block;
+  }
+  .end-total-score .total-max {
+    font-size: 0.9rem;
+    opacity: 0.7;
+  }
+  .end-level {
+    font-size: 1.1rem;
+    margin-top: 0.5rem;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    display: inline-block;
+    font-weight: bold;
+  }
+  .end-level.gold {
+    background: #FFD700;
+    color: #5a4800;
+  }
+  .end-level.silver {
+    background: #C0C0C0;
+    color: #3a3a3a;
+  }
+  .end-level.bronze {
+    background: #CD7F32;
+    color: white;
+  }
+  .end-recap-item .score-inline {
+    margin-left: auto;
+  }
+
   /* ── Wrong Guess Feedback ── */
   .modal.modal-wrong {
     border: 3px solid #e74c3c;
@@ -819,6 +909,7 @@
     </div>
   </div>
   <div class="reveal-body slide-up">
+    <div class="score-result" id="reveal-score"></div>
     <span class="reveal-category" id="reveal-category">&#x1F3DB; Patrimoine</span>
     <h2 id="reveal-title">Nom du lieu</h2>
     <p class="reveal-description" id="reveal-description">Description...</p>
@@ -845,6 +936,7 @@
     Vous avez decouvert tous les secrets de l'Hermitage et de la foret de Laigue.
     Merci pour cette promenade a travers l'histoire !
   </p>
+  <div class="end-total-score" id="end-total-score"></div>
   <div class="end-recap" id="end-recap"></div>
   <button class="btn btn-primary" onclick="showScreen('map-screen'); updateMap();">
     &#x1F5FA; Revoir la carte complete
@@ -1256,6 +1348,7 @@ let gameState = {
   visitedIndices: [],
   wrongGuesses: [],
   attempts: 0,
+  scores: [],
   started: false,
   completed: false
 };
@@ -1276,8 +1369,61 @@ function loadState() {
 }
 
 function resetState() {
-  gameState = { currentIndex: 0, visitedIndices: [], wrongGuesses: [], attempts: 0, started: false, completed: false };
+  gameState = { currentIndex: 0, visitedIndices: [], wrongGuesses: [], attempts: 0, scores: [], started: false, completed: false };
   saveState();
+}
+
+// ═══════════════════════════════════════════════
+// SCORING
+// ═══════════════════════════════════════════════
+const SCORE_LEVELS = [
+  { maxAttempts: 1, stars: 3, points: 100, label: 'Parfait !', icon: '&#x1F31F;' },
+  { maxAttempts: 2, stars: 2, points: 50,  label: 'Bien joue !', icon: '&#x2B50;' },
+  { maxAttempts: Infinity, stars: 1, points: 25, label: 'Trouve !', icon: '&#x2B50;' }
+];
+
+function computeScore(attempts) {
+  for (const level of SCORE_LEVELS) {
+    if (attempts <= level.maxAttempts) return { ...level };
+  }
+  return { ...SCORE_LEVELS[2] };
+}
+
+function renderStars(count) {
+  let html = '';
+  for (let i = 0; i < 3; i++) {
+    html += i < count ? '&#x2B50;' : '<span class="star-off">&#x2B50;</span>';
+  }
+  return html;
+}
+
+function renderScoreResult(score) {
+  return `<div class="score-stars">${renderStars(score.stars)}</div>
+    <div class="score-points">+${score.points} pts</div>
+    <div class="score-label">${score.label}</div>`;
+}
+
+function renderScoreInline(score) {
+  return `<span class="score-inline">
+    <span class="stars">${renderStars(score.stars)}</span>
+    <span class="pts">${score.points} pts</span>
+  </span>`;
+}
+
+function getTotalScore() {
+  if (!gameState.scores) return 0;
+  return gameState.scores.reduce((sum, s) => sum + s.points, 0);
+}
+
+function getMaxScore() {
+  return STOPS.length * SCORE_LEVELS[0].points;
+}
+
+function getFinalLevel(total, max) {
+  const pct = total / max;
+  if (pct >= 0.8) return { label: 'Explorateur d\'elite', cls: 'gold' };
+  if (pct >= 0.5) return { label: 'Bon promeneur', cls: 'silver' };
+  return { label: 'Apprenti explorateur', cls: 'bronze' };
 }
 
 // ═══════════════════════════════════════════════
@@ -1378,11 +1524,18 @@ function tryGuess(idx) {
     if (!gameState.visitedIndices.includes(idx)) {
       gameState.visitedIndices.push(idx);
     }
+
+    // Compute and save score
+    const score = computeScore(gameState.attempts);
+    if (!gameState.scores) gameState.scores = [];
+    gameState.scores.push({ stopIndex: idx, attempts: gameState.attempts, points: score.points, stars: score.stars });
     saveState();
 
     const stop = STOPS[idx];
     document.getElementById('arrival-modal-text').innerHTML =
-      `Bravo ! Vous avez trouve <strong>${stop.name}</strong>${gameState.attempts === 1 ? ' du premier coup !' : ` en ${gameState.attempts} tentatives.`} Decouvrez son histoire.`;
+      `Bravo ! Vous avez trouve <strong>${stop.name}</strong>${gameState.attempts === 1 ? ' du premier coup !' : ` en ${gameState.attempts} tentatives.`}<br><br>
+      <div class="score-stars">${renderStars(score.stars)}</div>
+      <strong>+${score.points} pts</strong> &mdash; ${score.label}`;
     document.getElementById('arrival-modal').classList.add('active');
   } else {
     // Wrong guess
@@ -1430,6 +1583,16 @@ function showReveal(idx) {
   svgContainer.innerHTML = generateSceneSVG(stop);
   container.insertBefore(svgContainer, badge);
 
+  // Score for this stop
+  const scoreEl = document.getElementById('reveal-score');
+  const stopScore = gameState.scores && gameState.scores.find(s => s.stopIndex === idx);
+  if (stopScore) {
+    scoreEl.style.display = '';
+    scoreEl.innerHTML = renderScoreResult(stopScore);
+  } else {
+    scoreEl.style.display = 'none';
+  }
+
   // Texts
   document.getElementById('reveal-category').innerHTML = `${stop.categoryIcon} ${stop.category}`;
   document.getElementById('reveal-title').textContent = stop.name;
@@ -1463,17 +1626,31 @@ function nextClue() {
 function finishGame() {
   gameState.completed = true;
   saveState();
+  renderEndScreen();
+  showScreen('end-screen');
+}
 
-  // Build recap
+function renderEndScreen() {
+  // Total score
+  const total = getTotalScore();
+  const max = getMaxScore();
+  const level = getFinalLevel(total, max);
+  const totalEl = document.getElementById('end-total-score');
+  totalEl.innerHTML = `<span class="total-pts">${total} / ${max} pts</span>
+    <span class="total-max">${renderStars(Math.round(total / max * 3))}</span>
+    <span class="end-level ${level.cls}">${level.label}</span>`;
+
+  // Build recap with per-stop scores
   const recap = document.getElementById('end-recap');
-  recap.innerHTML = STOPS.map(s =>
-    `<div class="end-recap-item">
+  recap.innerHTML = STOPS.map((s, i) => {
+    const stopScore = gameState.scores && gameState.scores.find(sc => sc.stopIndex === i);
+    const scoreHTML = stopScore ? renderScoreInline(stopScore) : '';
+    return `<div class="end-recap-item">
       <span class="emoji">${s.emoji}</span>
       <span class="name">${s.name}</span>
-    </div>`
-  ).join('');
-
-  showScreen('end-screen');
+      ${scoreHTML}
+    </div>`;
+  }).join('');
 }
 
 function resetGame() {
@@ -1639,14 +1816,8 @@ function haversine(lat1, lon1, lat2, lon2) {
 loadState();
 
 if (gameState.completed) {
+  renderEndScreen();
   showScreen('end-screen');
-  const recap = document.getElementById('end-recap');
-  recap.innerHTML = STOPS.map(s =>
-    `<div class="end-recap-item">
-      <span class="emoji">${s.emoji}</span>
-      <span class="name">${s.name}</span>
-    </div>`
-  ).join('');
 } else if (gameState.started) {
   showScreen('clue-screen');
   renderClue();
