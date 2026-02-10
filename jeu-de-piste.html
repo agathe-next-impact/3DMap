@@ -682,34 +682,12 @@
   }
 
   /* ── Scoring ── */
-  .score-result {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 1rem;
-    background: linear-gradient(135deg, #fefae0 0%, #fff8e1 100%);
-    border-radius: var(--radius);
-    border: 2px solid var(--accent);
-  }
   .score-stars {
     font-size: 1.8rem;
     letter-spacing: 0.2rem;
   }
   .score-stars .star-off {
     opacity: 0.2;
-  }
-  .score-points {
-    font-size: 1.4rem;
-    font-weight: bold;
-    color: var(--primary-dark);
-  }
-  .score-label {
-    font-size: 0.85rem;
-    color: var(--accent-dark);
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
   }
   .score-inline {
     display: inline-flex;
@@ -983,7 +961,6 @@
     </div>
   </div>
   <div class="reveal-body slide-up">
-    <div class="score-result" id="reveal-score"></div>
     <span class="reveal-category" id="reveal-category">&#x1F3DB; Patrimoine</span>
     <h2 id="reveal-title">Nom du lieu</h2>
     <p class="reveal-description" id="reveal-description">Description...</p>
@@ -1471,12 +1448,6 @@ function renderStars(count) {
   return html;
 }
 
-function renderScoreResult(score) {
-  return `<div class="score-stars">${renderStars(score.stars)}</div>
-    <div class="score-points">+${score.points} pts</div>
-    <div class="score-label">${score.label}</div>`;
-}
-
 function renderScoreInline(score) {
   return `<span class="score-inline">
     <span class="stars">${renderStars(score.stars)}</span>
@@ -1687,16 +1658,6 @@ function showReveal(idx) {
   svgContainer.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;';
   svgContainer.innerHTML = generateSceneSVG(stop);
   container.insertBefore(svgContainer, badge);
-
-  // Score for this stop
-  const scoreEl = document.getElementById('reveal-score');
-  const stopScore = gameState.scores && gameState.scores.find(s => s.stopIndex === idx);
-  if (stopScore) {
-    scoreEl.style.display = '';
-    scoreEl.innerHTML = renderScoreResult(stopScore);
-  } else {
-    scoreEl.style.display = 'none';
-  }
 
   // Texts
   document.getElementById('reveal-category').innerHTML = `${stop.categoryIcon} ${stop.category}`;
