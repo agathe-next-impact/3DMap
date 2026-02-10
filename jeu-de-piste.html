@@ -1415,8 +1415,26 @@ let gameState = {
   attempts: 0,
   scores: [],
   started: false,
-  completed: false
+  completed: false,
+  shuffleOrder: null
 };
+
+function shuffleArray(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function currentStopIndex() {
+  return gameState.shuffleOrder[gameState.currentIndex];
+}
+
+function currentStop() {
+  return STOPS[currentStopIndex()];
+}
 
 function saveState() {
   localStorage.setItem('jeuDePiste', JSON.stringify(gameState));
@@ -1427,6 +1445,11 @@ function loadState() {
   if (saved) {
     try {
       gameState = JSON.parse(saved);
+      // Backward compatibility: add shuffleOrder if missing on a started game
+      if (gameState.started && !gameState.shuffleOrder) {
+        gameState.shuffleOrder = STOPS.map((_, i) => i);
+        saveState();
+      }
     } catch(e) {
       resetState();
     }
@@ -1434,7 +1457,7 @@ function loadState() {
 }
 
 function resetState() {
-  gameState = { currentIndex: 0, visitedIndices: [], wrongGuesses: [], attempts: 0, scores: [], started: false, completed: false };
+  gameState = { currentIndex: 0, visitedIndices: [], wrongGuesses: [], attempts: 0, scores: [], started: false, completed: false, shuffleOrder: null };
   saveState();
 }
 
@@ -1551,14 +1574,15 @@ function goToClue() {
 // ═══════════════════════════════════════════════
 function startGame() {
   gameState.started = true;
+  gameState.shuffleOrder = shuffleArray(STOPS.map((_, i) => i));
   saveState();
   showScreen('clue-screen');
   renderClue();
 }
 
 function renderClue() {
-  const stop = STOPS[gameState.currentIndex];
-  const idx = gameState.currentIndex;
+  const stop = currentStop();
+  const stepIdx = gameState.currentIndex;
 
   // Reset attempts for new clue
   gameState.wrongGuesses = [];
@@ -1566,15 +1590,15 @@ function renderClue() {
   saveState();
 
   // Step badge
-  document.getElementById('clue-step-badge').textContent = `Etape ${idx + 1}/${STOPS.length}`;
-  document.getElementById('map-step-badge').textContent = `${idx + 1}/${STOPS.length}`;
+  document.getElementById('clue-step-badge').textContent = `Etape ${stepIdx + 1}/${STOPS.length}`;
+  document.getElementById('map-step-badge').textContent = `${stepIdx + 1}/${STOPS.length}`;
 
-  // Progress dots
+  // Progress dots (in shuffle order)
   const dotsEl = document.getElementById('progress-dots');
-  dotsEl.innerHTML = STOPS.map((_, i) => {
+  dotsEl.innerHTML = gameState.shuffleOrder.map((stopIdx, step) => {
     let cls = 'progress-dot';
-    if (gameState.visitedIndices.includes(i)) cls += ' done';
-    else if (i === idx) cls += ' current';
+    if (gameState.visitedIndices.includes(stopIdx)) cls += ' done';
+    else if (step === stepIdx) cls += ' current';
     return `<div class="${cls}"></div>`;
   }).join('');
 
@@ -1585,8 +1609,10 @@ function renderClue() {
 
   document.getElementById('clue-overlay').classList.remove('hidden');
 
-  // Texts
-  document.getElementById('clue-title').textContent = stop.clueTitle;
+  // Texts — dynamic clue title based on step number
+  const ordinals = ['Premier', 'Deuxieme', 'Troisieme', 'Quatrieme', 'Cinquieme', 'Sixieme', 'Septieme'];
+  const clueTitle = stepIdx === STOPS.length - 1 ? 'Dernier indice' : (ordinals[stepIdx] || `Indice ${stepIdx + 1}`) + ' indice';
+  document.getElementById('clue-title').textContent = clueTitle;
   document.getElementById('clue-text').textContent = stop.clueText;
   document.getElementById('clue-hint').textContent = stop.clueHint;
 
@@ -1608,7 +1634,8 @@ function tryGuess(idx) {
   gameState.attempts++;
   saveState();
 
-  if (idx === gameState.currentIndex) {
+  const targetIdx = currentStopIndex();
+  if (idx === targetIdx) {
     // Correct guess!
     if (!gameState.visitedIndices.includes(idx)) {
       gameState.visitedIndices.push(idx);
@@ -1655,7 +1682,7 @@ function closeWrongModal() {
 
 function revealCurrentPoint() {
   document.getElementById('arrival-modal').classList.remove('active');
-  const idx = gameState.currentIndex;
+  const idx = currentStopIndex();
   showReveal(idx);
 }
 
@@ -1720,10 +1747,12 @@ function renderEndScreen() {
     <span class="total-max">${renderStars(Math.round(total / max * 3))}</span>
     <span class="end-level ${level.cls}">${level.label}</span>`;
 
-  // Build recap with per-stop scores
+  // Build recap with per-stop scores (in play order)
   const recap = document.getElementById('end-recap');
-  recap.innerHTML = STOPS.map((s, i) => {
-    const stopScore = gameState.scores && gameState.scores.find(sc => sc.stopIndex === i);
+  const order = gameState.shuffleOrder || STOPS.map((_, i) => i);
+  recap.innerHTML = order.map((stopIdx) => {
+    const s = STOPS[stopIdx];
+    const stopScore = gameState.scores && gameState.scores.find(sc => sc.stopIndex === stopIdx);
     const scoreHTML = stopScore ? renderScoreInline(stopScore) : '';
     return `<div class="end-recap-item">
       <span class="emoji">${s.emoji}</span>
@@ -1765,16 +1794,18 @@ function updateMap() {
   markers.forEach(m => m.remove());
   markers = [];
 
-  // Draw route polyline for visited points
+  // Collect visited coords in play order for route polyline
+  const order = gameState.shuffleOrder || STOPS.map((_, i) => i);
   const visitedCoords = [];
+  order.forEach(si => {
+    if (gameState.visitedIndices.includes(si)) {
+      visitedCoords.push([STOPS[si].lat, STOPS[si].lng]);
+    }
+  });
 
   STOPS.forEach((stop, i) => {
     const isVisited = gameState.visitedIndices.includes(i);
     const isWrongGuess = gameState.wrongGuesses && gameState.wrongGuesses.includes(i);
-
-    if (isVisited) {
-      visitedCoords.push([stop.lat, stop.lng]);
-    }
 
     // All non-visited markers look identical (locked)
     const markerClass = isVisited ? 'marker-visited' : 'marker-locked';
@@ -1864,7 +1895,7 @@ function startGeolocation() {
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
       const { latitude, longitude } = pos.coords;
-      const stop = STOPS[gameState.currentIndex];
+      const stop = currentStop();
       const dist = haversine(latitude, longitude, stop.lat, stop.lng);
 
       const geoEl = document.getElementById('geo-info');
@@ -1877,7 +1908,7 @@ function startGeolocation() {
       // Update user location marker on the map
       updateUserMarker(latitude, longitude);
 
-      if (isNear && !gameState.visitedIndices.includes(gameState.currentIndex)) {
+      if (isNear && !gameState.visitedIndices.includes(currentStopIndex())) {
         showArrivalModal();
       }
     },
