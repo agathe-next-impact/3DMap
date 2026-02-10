@@ -534,46 +534,7 @@
     margin-bottom: 0.5rem;
   }
 
-  /* ── Floating Map Button ── */
-  .fab-map {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: var(--primary);
-    color: white;
-    border: none;
-    box-shadow: var(--shadow-lg);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    z-index: 100;
-    transition: all 0.3s;
-  }
-  .fab-map:hover {
-    transform: scale(1.1);
-    background: var(--primary-dark);
-  }
-  .fab-map .fab-label {
-    position: absolute;
-    right: 64px;
-    background: var(--primary-dark);
-    color: white;
-    padding: 0.3rem 0.8rem;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.3s;
-    pointer-events: none;
-  }
-  .fab-map:hover .fab-label {
-    opacity: 1;
-  }
+
 
   /* ── Leaflet Custom Markers ── */
   .custom-marker {
@@ -669,9 +630,6 @@
     }
     #map-screen {
       max-width: 100%;
-    }
-    .fab-map {
-      right: calc(50% - 240px + 1.5rem);
     }
   }
 
@@ -1116,11 +1074,6 @@
   </div>
 </div>
 
-<!-- ══════════════ FAB MAP BUTTON ══════════════ -->
-<button class="fab-map" id="fab-map" onclick="showScreen('map-screen'); updateMap();" style="display:none;">
-  &#x1F5FA;
-  <span class="fab-label">Voir la carte</span>
-</button>
 
 <script>
 // ═══════════════════════════════════════════════
@@ -1625,10 +1578,6 @@ function showScreen(id) {
   }
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-
-  // Show/hide FAB
-  const fab = document.getElementById('fab-map');
-  fab.style.display = (id === 'map-screen' || id === 'welcome' || id === 'end-screen') ? 'none' : 'flex';
 
   // Show/hide score bar (hidden on welcome and end screens)
   const bar = document.getElementById('score-bar');
