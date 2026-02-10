@@ -359,18 +359,9 @@
     background: var(--success);
     border-color: var(--success);
   }
-  .legend-dot.current {
-    background: var(--accent);
-    border-color: var(--accent-dark);
-    animation: pulse-dot 2s infinite;
-  }
   .legend-dot.locked {
     background: var(--locked);
     border-color: #999;
-  }
-  @keyframes pulse-dot {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(212,163,115,0.5); }
-    50% { box-shadow: 0 0 0 6px rgba(212,163,115,0); }
   }
 
   /* ── Reveal Screen ── */
@@ -594,15 +585,6 @@
     background: var(--success);
     color: white;
   }
-  .marker-current {
-    background: var(--accent);
-    color: var(--primary-dark);
-    animation: pulse-marker 2s infinite;
-  }
-  @keyframes pulse-marker {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(212,163,115,0.6), 0 2px 8px rgba(0,0,0,0.3); }
-    50% { box-shadow: 0 0 0 12px rgba(212,163,115,0), 0 2px 8px rgba(0,0,0,0.3); }
-  }
   .marker-locked {
     background: var(--locked);
     color: white;
@@ -654,17 +636,6 @@
     line-height: 1.5;
   }
 
-  /* ── Demo Mode Banner ── */
-  .demo-banner {
-    background: var(--accent);
-    color: var(--primary-dark);
-    text-align: center;
-    padding: 0.4rem 1rem;
-    font-size: 0.75rem;
-    font-weight: bold;
-    letter-spacing: 0.05em;
-  }
-
   /* ── Responsive ── */
   @media (min-width: 768px) {
     .screen {
@@ -708,6 +679,40 @@
   }
   .geo-distance.near .dist-value {
     color: white;
+  }
+
+  /* ── Wrong Guess Feedback ── */
+  .modal.modal-wrong {
+    border: 3px solid #e74c3c;
+  }
+  .modal-wrong .modal-icon {
+    color: #e74c3c;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    15%, 45%, 75% { transform: translateX(-8px); }
+    30%, 60%, 90% { transform: translateX(8px); }
+  }
+  .marker-wrong {
+    animation: shake 0.5s ease, wrong-flash 0.5s ease;
+  }
+  @keyframes wrong-flash {
+    0% { background: #e74c3c; }
+    100% { background: var(--locked); }
+  }
+  .attempts-counter {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    font-size: 0.85rem;
+    color: var(--text-light);
+  }
+  .attempts-counter strong {
+    color: var(--primary);
   }
 
   /* ── Animations ── */
@@ -759,7 +764,6 @@
 
 <!-- ══════════════ CLUE SCREEN ══════════════ -->
 <div id="clue-screen" class="screen">
-  <div class="demo-banner">MODE DEMO &mdash; Cliquez sur le point de la carte pour simuler l'arrivee</div>
   <div class="clue-header">
     <span class="step-badge" id="clue-step-badge">Etape 1/7</span>
     <div class="progress-dots" id="progress-dots"></div>
@@ -778,12 +782,10 @@
     <div class="clue-text" id="clue-text">Indice...</div>
     <p class="clue-hint" id="clue-hint">Astuce...</p>
     <div id="geo-info"></div>
+    <div id="attempts-info"></div>
     <div class="clue-actions">
-      <button class="btn btn-primary" onclick="showScreen('map-screen'); updateMap(); flyToCurrentPoint();">
-        &#x1F5FA; Voir la carte pour trouver ce lieu
-      </button>
-      <button class="btn btn-outline btn-sm" onclick="simulateArrival()" id="btn-simulate">
-        &#x1F3AF; Simuler l'arrivee (demo)
+      <button class="btn btn-primary" onclick="showScreen('map-screen'); updateMap();">
+        &#x1F5FA; Ouvrir la carte et trouver ce lieu
       </button>
     </div>
   </div>
@@ -801,13 +803,10 @@
   <div id="map-container"></div>
   <div class="map-legend">
     <div class="legend-item">
-      <span class="legend-dot visited"></span> Visite
+      <span class="legend-dot visited"></span> Decouvert
     </div>
     <div class="legend-item">
-      <span class="legend-dot current"></span> A trouver
-    </div>
-    <div class="legend-item">
-      <span class="legend-dot locked"></span> A venir
+      <span class="legend-dot locked"></span> A decouvrir
     </div>
   </div>
 </div>
@@ -865,6 +864,18 @@
     <p id="arrival-modal-text">Vous avez trouve le lieu. Decouvrez son histoire !</p>
     <button class="btn btn-success" onclick="revealCurrentPoint()">
       Decouvrir ce lieu &#x2794;
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════ WRONG GUESS MODAL ══════════════ -->
+<div class="modal-overlay" id="wrong-modal">
+  <div class="modal modal-wrong">
+    <div class="modal-icon">&#x274C;</div>
+    <h3>Ce n'est pas le bon lieu !</h3>
+    <p id="wrong-modal-text">Relisez l'indice et essayez un autre point sur la carte.</p>
+    <button class="btn btn-outline" onclick="closeWrongModal()">
+      Reessayer
     </button>
   </div>
 </div>
@@ -1238,6 +1249,8 @@ function generateSceneSVG(stop) {
 let gameState = {
   currentIndex: 0,
   visitedIndices: [],
+  wrongGuesses: [],
+  attempts: 0,
   started: false,
   completed: false
 };
@@ -1258,7 +1271,7 @@ function loadState() {
 }
 
 function resetState() {
-  gameState = { currentIndex: 0, visitedIndices: [], started: false, completed: false };
+  gameState = { currentIndex: 0, visitedIndices: [], wrongGuesses: [], attempts: 0, started: false, completed: false };
   saveState();
 }
 
@@ -1303,6 +1316,11 @@ function renderClue() {
   const stop = STOPS[gameState.currentIndex];
   const idx = gameState.currentIndex;
 
+  // Reset attempts for new clue
+  gameState.wrongGuesses = [];
+  gameState.attempts = 0;
+  saveState();
+
   // Step badge
   document.getElementById('clue-step-badge').textContent = `Etape ${idx + 1}/${STOPS.length}`;
   document.getElementById('map-step-badge').textContent = `${idx + 1}/${STOPS.length}`;
@@ -1327,29 +1345,65 @@ function renderClue() {
   document.getElementById('clue-title').textContent = stop.clueTitle;
   document.getElementById('clue-text').textContent = stop.clueText;
   document.getElementById('clue-hint').textContent = stop.clueHint;
+
+  // Reset attempts display
+  document.getElementById('attempts-info').innerHTML = '';
 }
 
-function simulateArrival() {
-  showArrivalModal();
+function updateAttemptsDisplay() {
+  const el = document.getElementById('attempts-info');
+  if (gameState.attempts > 0) {
+    el.innerHTML = `<div class="attempts-counter">
+      &#x1F3AF; Tentatives : <strong>${gameState.attempts}</strong>
+    </div>`;
+  }
 }
 
-function showArrivalModal() {
-  const stop = STOPS[gameState.currentIndex];
-  document.getElementById('arrival-modal-text').innerHTML =
-    `Vous avez trouve <strong>${stop.name}</strong> ! Decouvrez son histoire.`;
-  document.getElementById('arrival-modal').classList.add('active');
+function tryGuess(idx) {
+  map.closePopup();
+  gameState.attempts++;
+  saveState();
+
+  if (idx === gameState.currentIndex) {
+    // Correct guess!
+    if (!gameState.visitedIndices.includes(idx)) {
+      gameState.visitedIndices.push(idx);
+    }
+    saveState();
+
+    const stop = STOPS[idx];
+    document.getElementById('arrival-modal-text').innerHTML =
+      `Bravo ! Vous avez trouve <strong>${stop.name}</strong>${gameState.attempts === 1 ? ' du premier coup !' : ` en ${gameState.attempts} tentatives.`} Decouvrez son histoire.`;
+    document.getElementById('arrival-modal').classList.add('active');
+  } else {
+    // Wrong guess
+    gameState.wrongGuesses.push(idx);
+    saveState();
+
+    const wrongStop = STOPS[idx];
+    document.getElementById('wrong-modal-text').textContent =
+      `"${wrongStop.name}" ne correspond pas a l'indice. Relisez bien et essayez un autre point !`;
+    document.getElementById('wrong-modal').classList.add('active');
+
+    // Flash the wrong marker
+    const markerEl = document.querySelectorAll('.custom-marker')[idx];
+    if (markerEl) {
+      markerEl.classList.add('marker-wrong');
+      setTimeout(() => markerEl.classList.remove('marker-wrong'), 600);
+    }
+
+    updateAttemptsDisplay();
+  }
+}
+
+function closeWrongModal() {
+  document.getElementById('wrong-modal').classList.remove('active');
+  updateMap();
 }
 
 function revealCurrentPoint() {
-  const idx = gameState.currentIndex;
   document.getElementById('arrival-modal').classList.remove('active');
-
-  // Mark as visited
-  if (!gameState.visitedIndices.includes(idx)) {
-    gameState.visitedIndices.push(idx);
-  }
-  saveState();
-
+  const idx = gameState.currentIndex;
   showReveal(idx);
 }
 
@@ -1444,25 +1498,24 @@ function updateMap() {
   markers.forEach(m => m.remove());
   markers = [];
 
-  // Draw route polyline for visited + current
+  // Draw route polyline for visited points
   const visitedCoords = [];
 
   STOPS.forEach((stop, i) => {
     const isVisited = gameState.visitedIndices.includes(i);
-    const isCurrent = i === gameState.currentIndex && !gameState.completed;
-    const isLocked = !isVisited && !isCurrent;
+    const isWrongGuess = gameState.wrongGuesses && gameState.wrongGuesses.includes(i);
 
-    if (isVisited || isCurrent) {
+    if (isVisited) {
       visitedCoords.push([stop.lat, stop.lng]);
     }
 
-    let markerClass = 'marker-locked';
-    if (isVisited) markerClass = 'marker-visited';
-    else if (isCurrent) markerClass = 'marker-current';
+    // All non-visited markers look identical (locked)
+    const markerClass = isVisited ? 'marker-visited' : 'marker-locked';
+    const markerContent = isVisited ? '&#x2714;' : '&#x1F512;';
 
     const icon = L.divIcon({
       className: '',
-      html: `<div class="custom-marker ${markerClass}" style="width:32px;height:32px;">${isVisited ? '&#x2714;' : (isCurrent ? (i + 1) : '&#x1F512;')}</div>`,
+      html: `<div class="custom-marker ${markerClass}" style="width:32px;height:32px;">${markerContent}</div>`,
       iconSize: [32, 32],
       iconAnchor: [16, 16]
     });
@@ -1477,16 +1530,19 @@ function updateMap() {
         <p>${stop.category}</p>
         <button class="btn btn-success btn-sm" onclick="showRevealFromMap(${i})">Revoir le contenu</button>
       </div>`;
-    } else if (isCurrent) {
+    } else if (gameState.completed) {
       popupHTML = `<div class="popup-content">
-        <h3>&#x1F50D; Lieu a trouver</h3>
-        <p>Etape ${i + 1} du parcours</p>
-        <button class="btn btn-primary btn-sm" onclick="arriveFromMap(${i})">Je suis arrive !</button>
+        <h3>${stop.name}</h3>
+        <p>Parcours termine</p>
       </div>`;
     } else {
+      // All locked points show their name + a "C'est ici ?" button
       popupHTML = `<div class="popup-content">
-        <h3>&#x1F512; Etape ${i + 1}</h3>
-        <p>Pas encore accessible</p>
+        <h3>&#x1F512; ${stop.name}</h3>
+        <p>${isWrongGuess ? 'Deja tente...' : 'Est-ce le lieu de l\'indice ?'}</p>
+        <button class="btn btn-primary btn-sm" onclick="tryGuess(${i})"${isWrongGuess ? ' disabled style="opacity:0.4;cursor:not-allowed;"' : ''}>
+          ${isWrongGuess ? 'Deja essaye' : 'C\'est ici !'}
+        </button>
       </div>`;
     }
 
@@ -1494,7 +1550,7 @@ function updateMap() {
     markers.push(marker);
   });
 
-  // Draw route line
+  // Draw route line between visited points
   if (visitedCoords.length > 1) {
     const polyline = L.polyline(visitedCoords, {
       color: '#40916c',
@@ -1509,20 +1565,6 @@ function updateMap() {
   if (STOPS.length > 0) {
     const bounds = L.latLngBounds(STOPS.map(s => [s.lat, s.lng]));
     map.fitBounds(bounds, { padding: [40, 40] });
-  }
-}
-
-function flyToCurrentPoint() {
-  if (map) {
-    const stop = STOPS[gameState.currentIndex];
-    map.flyTo([stop.lat, stop.lng], 18, { duration: 1.5 });
-  }
-}
-
-function arriveFromMap(idx) {
-  if (idx === gameState.currentIndex) {
-    map.closePopup();
-    showArrivalModal();
   }
 }
 
