@@ -1889,7 +1889,6 @@ function updateMap() {
   }
 
   // Center on last discovered pinpoint
-  const order = gameState.shuffleOrder || STOPS.map((_, i) => i);
   let lastVisited = null;
   for (let s = order.length - 1; s >= 0; s--) {
     if (gameState.visitedIndices.includes(order[s])) {
