@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Jeu de Piste - L'Hermitage et la Foret</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2d6a4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jeu de Piste">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -1580,6 +1591,34 @@ if (gameState.completed) {
   startGeolocation();
 } else {
   showScreen('welcome');
+}
+
+// ═══════════════════════════════════════════════
+// SERVICE WORKER REGISTRATION
+// ═══════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then((reg) => {
+        console.log('SW registered, scope:', reg.scope);
+
+        // Listen for updates
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+              // New version available - show a subtle notification
+              const banner = document.createElement('div');
+              banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1b4332;color:white;text-align:center;padding:0.8rem;font-size:0.9rem;z-index:9999;cursor:pointer;';
+              banner.textContent = 'Nouvelle version disponible. Cliquez pour rafraichir.';
+              banner.onclick = () => location.reload();
+              document.body.appendChild(banner);
+            }
+          });
+        });
+      })
+      .catch((err) => console.log('SW registration failed:', err));
+  });
 }
 </script>
 
