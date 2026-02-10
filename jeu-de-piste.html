@@ -7,7 +7,7 @@
 
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2d6a4f">
+<meta name="theme-color" content="#2a4a51">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Jeu de Piste">
@@ -19,20 +19,29 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
-    --primary: #2d6a4f;
-    --primary-light: #40916c;
-    --primary-dark: #1b4332;
-    --accent: #d4a373;
-    --accent-dark: #b07d52;
-    --bg: #fefae0;
-    --bg-dark: #f0ead2;
-    --text: #2c2c2c;
-    --text-light: #5c5c5c;
-    --success: #52b788;
-    --locked: #adb5bd;
+    --brand-coral: #e75754;
+    --brand-gray: #535353;
+    --brand-teal: #56939f;
+    --brand-green: #78ad7d;
+    --brand-pink: #c14c66;
+    --brand-orange: #dc6f45;
+    --brand-dark: #2a4a51;
+    --brand-white: #ffffff;
+
+    --primary: var(--brand-teal);
+    --primary-light: var(--brand-green);
+    --primary-dark: var(--brand-dark);
+    --accent: var(--brand-orange);
+    --accent-dark: var(--brand-coral);
+    --bg: var(--brand-white);
+    --bg-dark: #e9eff1;
+    --text: var(--brand-gray);
+    --text-light: #727272;
+    --success: var(--brand-green);
+    --locked: #9faeb3;
     --radius: 16px;
-    --shadow: 0 4px 24px rgba(0,0,0,0.12);
-    --shadow-lg: 0 8px 40px rgba(0,0,0,0.18);
+    --shadow: 0 4px 24px rgba(0,0,0,0.10);
+    --shadow-lg: 0 8px 40px rgba(0,0,0,0.15);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -140,7 +149,7 @@
   .btn-primary:hover {
     background: var(--accent-dark);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(212,163,115,0.4);
+    box-shadow: 0 6px 20px rgba(220,111,69,0.4);
   }
   .btn-secondary {
     background: rgba(255,255,255,0.15);
@@ -165,7 +174,7 @@
     color: white;
   }
   .btn-success:hover {
-    background: #3da87a;
+    background: #6a9e6f;
     transform: translateY(-2px);
   }
   .btn-sm {
@@ -212,7 +221,7 @@
   }
   .progress-dot.current {
     background: var(--accent);
-    box-shadow: 0 0 0 3px rgba(212,163,115,0.3);
+    box-shadow: 0 0 0 3px rgba(220,111,69,0.3);
   }
 
   .clue-image-container {
@@ -592,16 +601,16 @@
   .user-location {
     width: 16px;
     height: 16px;
-    background: #4285F4;
+    background: #56939f;
     border: 3px solid white;
     border-radius: 50%;
-    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.4), 0 1px 4px rgba(0,0,0,0.3);
+    box-shadow: 0 0 0 0 rgba(86, 147, 159, 0.4), 0 1px 4px rgba(0,0,0,0.3);
     animation: user-pulse 2s ease-out infinite;
   }
   @keyframes user-pulse {
-    0% { box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.4), 0 1px 4px rgba(0,0,0,0.3); }
-    70% { box-shadow: 0 0 0 12px rgba(66, 133, 244, 0), 0 1px 4px rgba(0,0,0,0.3); }
-    100% { box-shadow: 0 0 0 0 rgba(66, 133, 244, 0), 0 1px 4px rgba(0,0,0,0.3); }
+    0% { box-shadow: 0 0 0 0 rgba(86, 147, 159, 0.4), 0 1px 4px rgba(0,0,0,0.3); }
+    70% { box-shadow: 0 0 0 12px rgba(86, 147, 159, 0), 0 1px 4px rgba(0,0,0,0.3); }
+    100% { box-shadow: 0 0 0 0 rgba(86, 147, 159, 0), 0 1px 4px rgba(0,0,0,0.3); }
   }
 
   /* ── Arrival Modal ── */
@@ -748,15 +757,15 @@
     font-weight: bold;
   }
   .end-level.gold {
-    background: #FFD700;
-    color: #5a4800;
+    background: var(--brand-orange);
+    color: white;
   }
   .end-level.silver {
-    background: #C0C0C0;
-    color: #3a3a3a;
+    background: var(--brand-teal);
+    color: white;
   }
   .end-level.bronze {
-    background: #CD7F32;
+    background: var(--brand-pink);
     color: white;
   }
   .end-recap-item .score-inline {
@@ -827,10 +836,10 @@
 
   /* ── Wrong Guess Feedback ── */
   .modal.modal-wrong {
-    border: 3px solid #e74c3c;
+    border: 3px solid var(--brand-pink);
   }
   .modal-wrong .modal-icon {
-    color: #e74c3c;
+    color: var(--brand-pink);
   }
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
@@ -841,7 +850,7 @@
     animation: shake 0.5s ease, wrong-flash 0.5s ease;
   }
   @keyframes wrong-flash {
-    0% { background: #e74c3c; }
+    0% { background: #c14c66; }
     100% { background: var(--locked); }
   }
   .attempts-counter {
@@ -1261,7 +1270,7 @@ function generateSceneSVG(stop) {
       <rect x="510" y="295" width="40" height="45" fill="#87CEEB" stroke="#6B4226" stroke-width="3"/>
       <!-- Door -->
       <rect x="370" y="290" width="60" height="60" fill="#6B4226" rx="30 30 0 0"/>
-      <circle cx="418" cy="325" r="4" fill="#d4a373"/>
+      <circle cx="418" cy="325" r="4" fill="#dc6f45"/>
       <!-- Trees -->
       <circle cx="120" cy="280" r="45" fill="#2E8B57"/>
       <rect x="115" y="325" width="10" height="40" fill="#6B4226"/>
@@ -1862,7 +1871,7 @@ function updateMap() {
   // Draw route line between visited points
   if (visitedCoords.length > 1) {
     const polyline = L.polyline(visitedCoords, {
-      color: '#40916c',
+      color: '#56939f',
       weight: 3,
       opacity: 0.6,
       dashArray: '8, 8'
@@ -1984,7 +1993,7 @@ if ('serviceWorker' in navigator) {
             if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
               // New version available - show a subtle notification
               const banner = document.createElement('div');
-              banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1b4332;color:white;text-align:center;padding:0.8rem;font-size:0.9rem;z-index:9999;cursor:pointer;';
+              banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#2a4a51;color:white;text-align:center;padding:0.8rem;font-size:0.9rem;z-index:9999;cursor:pointer;';
               banner.textContent = 'Nouvelle version disponible. Cliquez pour rafraichir.';
               banner.onclick = () => location.reload();
               document.body.appendChild(banner);
