@@ -1843,6 +1843,15 @@ function updateMap() {
         <h3>${stop.name}</h3>
         <p>Parcours termine</p>
       </div>`;
+    } else if (!gameState.started) {
+      // Game not started yet: view-only
+      popupHTML = `<div class="popup-content">
+        <h3>&#x1F512; ${stop.name}</h3>
+        <p>Lancez le parcours pour decouvrir ce lieu !</p>
+        <button class="btn btn-primary btn-sm" onclick="map.closePopup(); goBackFromMap(); startGame();">
+          Commencer l'aventure &#x2794;
+        </button>
+      </div>`;
     } else if (isViewOnly) {
       // From reveal screen: no guessing allowed
       popupHTML = `<div class="popup-content">
