@@ -771,6 +771,68 @@
     margin-left: auto;
   }
 
+  /* ── Persistent Score Bar ── */
+  .score-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    padding: 0.4rem 1rem;
+    background: var(--primary-dark);
+    color: white;
+    font-size: 0.8rem;
+    font-weight: bold;
+    z-index: 1100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .score-bar.visible {
+    display: flex;
+  }
+  .score-bar .sb-score {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .score-bar .sb-pts {
+    font-size: 1rem;
+    color: var(--accent);
+  }
+  .score-bar .sb-max {
+    opacity: 0.5;
+    font-weight: normal;
+  }
+  .score-bar .sb-stars {
+    font-size: 0.75rem;
+    letter-spacing: 0.05rem;
+  }
+  .score-bar .sb-stars .star-off {
+    opacity: 0.25;
+  }
+  .score-bar .sb-divider {
+    width: 1px;
+    height: 16px;
+    background: rgba(255,255,255,0.25);
+  }
+  .score-bar .sb-step {
+    opacity: 0.7;
+    font-weight: normal;
+  }
+
+  /* Offset content below the score bar when visible */
+  .score-bar.visible ~ .screen .clue-header {
+    top: 30px;
+  }
+  .score-bar.visible ~ .screen .map-header {
+    margin-top: 30px;
+  }
+  .score-bar.visible ~ .screen .reveal-body {
+    padding-top: calc(1.5rem + 30px);
+  }
+
   /* ── Wrong Guess Feedback ── */
   .modal.modal-wrong {
     border: 3px solid #e74c3c;
@@ -823,6 +885,18 @@
 </style>
 </head>
 <body>
+
+<!-- ══════════════ PERSISTENT SCORE BAR ══════════════ -->
+<div class="score-bar" id="score-bar">
+  <div class="sb-score">
+    <span class="sb-pts" id="sb-pts">0</span>
+    <span class="sb-max" id="sb-max">/ 700 pts</span>
+  </div>
+  <div class="sb-divider"></div>
+  <div class="sb-stars" id="sb-stars"></div>
+  <div class="sb-divider"></div>
+  <span class="sb-step" id="sb-step"></span>
+</div>
 
 <!-- ══════════════ WELCOME SCREEN ══════════════ -->
 <div id="welcome" class="screen active">
@@ -1426,6 +1500,27 @@ function getFinalLevel(total, max) {
   return { label: 'Apprenti explorateur', cls: 'bronze' };
 }
 
+function updateScoreBar() {
+  const bar = document.getElementById('score-bar');
+  if (!gameState.started) {
+    bar.classList.remove('visible');
+    return;
+  }
+  bar.classList.add('visible');
+
+  const total = getTotalScore();
+  const max = getMaxScore();
+  const visited = gameState.visitedIndices ? gameState.visitedIndices.length : 0;
+
+  document.getElementById('sb-pts').textContent = total;
+  document.getElementById('sb-max').textContent = `/ ${max} pts`;
+  document.getElementById('sb-stars').innerHTML = renderStars(
+    visited > 0 ? Math.round((total / (visited * SCORE_LEVELS[0].points)) * 3) : 0
+  );
+  document.getElementById('sb-step').textContent =
+    gameState.completed ? 'Termine !' : `Etape ${gameState.currentIndex + 1}/${STOPS.length}`;
+}
+
 // ═══════════════════════════════════════════════
 // SCREEN NAVIGATION
 // ═══════════════════════════════════════════════
@@ -1442,6 +1537,15 @@ function showScreen(id) {
   // Show/hide FAB
   const fab = document.getElementById('fab-map');
   fab.style.display = (id === 'map-screen' || id === 'welcome' || id === 'end-screen') ? 'none' : 'flex';
+
+  // Show/hide score bar (hidden on welcome and end screens)
+  const bar = document.getElementById('score-bar');
+  if (id === 'welcome' || id === 'end-screen') {
+    bar.classList.remove('visible');
+  } else if (gameState.started) {
+    bar.classList.add('visible');
+    updateScoreBar();
+  }
 
   // Invalidate map size when showing map
   if (id === 'map-screen' && map) {
@@ -1530,6 +1634,7 @@ function tryGuess(idx) {
     if (!gameState.scores) gameState.scores = [];
     gameState.scores.push({ stopIndex: idx, attempts: gameState.attempts, points: score.points, stars: score.stars });
     saveState();
+    updateScoreBar();
 
     const stop = STOPS[idx];
     document.getElementById('arrival-modal-text').innerHTML =
