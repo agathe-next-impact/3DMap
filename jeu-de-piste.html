@@ -772,6 +772,64 @@
     margin-left: auto;
   }
 
+  /* ── PWA Install Banner ── */
+  .pwa-install-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1rem;
+    background: var(--brand-dark);
+    color: white;
+    font-size: 0.82rem;
+    z-index: 1200;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .pwa-install-bar.visible {
+    display: flex;
+  }
+  .pwa-install-bar .pwa-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pwa-install-bar .pwa-btn {
+    background: var(--brand-orange);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.78rem;
+    font-weight: bold;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .pwa-install-bar .pwa-btn:hover {
+    background: var(--brand-coral);
+  }
+  .pwa-install-bar .pwa-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.6);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0 0.2rem;
+    line-height: 1;
+  }
+  .pwa-install-bar .pwa-close:hover {
+    color: white;
+  }
+  /* Push score bar below install banner */
+  .pwa-install-bar.visible ~ .score-bar {
+    top: 36px;
+  }
+
   /* ── Persistent Score Bar ── */
   .score-bar {
     position: fixed;
@@ -823,15 +881,15 @@
     font-weight: normal;
   }
 
-  /* Offset content below the score bar when visible */
-  .score-bar.visible ~ .screen .clue-header {
-    top: 30px;
+  /* Offset content below top bars (dynamic via --top-offset) */
+  .screen .clue-header {
+    top: var(--top-offset, 0px);
   }
-  .score-bar.visible ~ .screen .map-header {
-    margin-top: 30px;
+  .screen .map-header {
+    margin-top: var(--top-offset, 0px);
   }
-  .score-bar.visible ~ .screen .reveal-body {
-    padding-top: calc(1.5rem + 30px);
+  .screen .reveal-body {
+    padding-top: calc(1.5rem + var(--top-offset, 0px));
   }
 
   /* ── Wrong Guess Feedback ── */
@@ -886,6 +944,13 @@
 </style>
 </head>
 <body>
+
+<!-- ══════════════ PWA INSTALL BANNER ══════════════ -->
+<div class="pwa-install-bar" id="pwa-install-bar">
+  <span class="pwa-text">&#x1F4F2; Installer l'application</span>
+  <button class="pwa-btn" id="pwa-install-btn">Installer</button>
+  <button class="pwa-close" id="pwa-close-btn" aria-label="Fermer">&#x2715;</button>
+</div>
 
 <!-- ══════════════ PERSISTENT SCORE BAR ══════════════ -->
 <div class="score-bar" id="score-bar">
@@ -1539,6 +1604,16 @@ function updateScoreBar() {
 }
 
 // ═══════════════════════════════════════════════
+// TOP OFFSET (install banner + score bar)
+// ═══════════════════════════════════════════════
+function updateTopOffset() {
+  let offset = 0;
+  if (document.getElementById('pwa-install-bar').classList.contains('visible')) offset += 36;
+  if (document.getElementById('score-bar').classList.contains('visible')) offset += 30;
+  document.documentElement.style.setProperty('--top-offset', offset + 'px');
+}
+
+// ═══════════════════════════════════════════════
 // SCREEN NAVIGATION
 // ═══════════════════════════════════════════════
 let previousScreen = 'clue-screen';
@@ -1563,6 +1638,8 @@ function showScreen(id) {
     bar.classList.add('visible');
     updateScoreBar();
   }
+
+  updateTopOffset();
 
   // Invalidate map size when showing map
   if (id === 'map-screen' && map) {
@@ -1984,6 +2061,42 @@ if (gameState.completed) {
 } else {
   showScreen('welcome');
 }
+
+// ═══════════════════════════════════════════════
+// PWA INSTALL PROMPT
+// ═══════════════════════════════════════════════
+let deferredPrompt = null;
+const installBar = document.getElementById('pwa-install-bar');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (localStorage.getItem('pwaInstallDismissed')) return;
+  installBar.classList.add('visible');
+  updateTopOffset();
+});
+
+document.getElementById('pwa-install-btn').addEventListener('click', () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    installBar.classList.remove('visible');
+    updateTopOffset();
+  });
+});
+
+document.getElementById('pwa-close-btn').addEventListener('click', () => {
+  installBar.classList.remove('visible');
+  localStorage.setItem('pwaInstallDismissed', '1');
+  updateTopOffset();
+});
+
+window.addEventListener('appinstalled', () => {
+  installBar.classList.remove('visible');
+  deferredPrompt = null;
+  updateTopOffset();
+});
 
 // ═══════════════════════════════════════════════
 // SERVICE WORKER REGISTRATION
