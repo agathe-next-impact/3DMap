@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#2d6a4f"/>
+  <!-- Map pin -->
+  <path d="M256 80c-66.3 0-120 53.7-120 120 0 90 120 220 120 220s120-130 120-220c0-66.3-53.7-120-120-120z" fill="#d4a373"/>
+  <circle cx="256" cy="200" r="50" fill="#fefae0"/>
+  <!-- Compass rose inside -->
+  <polygon points="256,165 266,195 256,190 246,195" fill="#2d6a4f"/>
+  <polygon points="256,235 246,205 256,210 266,205" fill="#40916c"/>
+  <polygon points="221,200 251,190 246,200 251,210" fill="#2d6a4f"/>
+  <polygon points="291,200 261,210 266,200 261,190" fill="#40916c"/>
+  <!-- Trees -->
+  <circle cx="140" cy="380" r="30" fill="#40916c"/>
+  <rect x="136" y="410" width="8" height="20" fill="#8B6914" rx="2"/>
+  <circle cx="380" cy="370" r="35" fill="#1b4332"/>
+  <rect x="376" y="405" width="8" height="22" fill="#8B6914" rx="2"/>
+  <circle cx="420" cy="400" r="25" fill="#40916c"/>
+  <rect x="417" y="425" width="6" height="16" fill="#8B6914" rx="2"/>
+</svg>
