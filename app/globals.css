@@ -117,7 +117,7 @@
     font-size: 1rem;
     font-weight: bold;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
     text-decoration: none;
     position: relative;
     z-index: 1;
@@ -526,10 +526,13 @@
     font-size: 14px;
     border: 3px solid white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    transition: transform 0.3s;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .custom-marker:hover {
     transform: scale(1.2);
+  }
+  .custom-marker:active {
+    transform: scale(0.9);
   }
   .marker-visited {
     background: var(--success);
@@ -578,11 +581,6 @@
     max-width: 340px;
     width: 100%;
     box-shadow: var(--shadow-lg);
-    animation: modalIn 0.4s ease;
-  }
-  @keyframes modalIn {
-    from { transform: scale(0.9); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
   }
   .modal .modal-icon {
     font-size: 3rem;
@@ -864,18 +862,153 @@
     color: var(--primary);
   }
 
-  /* ── Animations ── */
-  .fade-in {
-    animation: fadeIn 0.5s ease;
+  /* ── Screen Transitions ── */
+  .screen-enter {
+    animation: screenFadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
+  .screen-exit {
+    animation: screenFadeOut 0.25s ease-in forwards;
+  }
+  @keyframes screenFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  .slide-up {
-    animation: slideUp 0.5s ease;
+  @keyframes screenFadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-8px); }
   }
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(30px); }
+
+  /* ── Staggered Entrance ── */
+  .screen-enter .stagger-1,
+  .screen-enter .stagger-2,
+  .screen-enter .stagger-3,
+  .screen-enter .stagger-4,
+  .screen-enter .stagger-5,
+  .screen-enter .stagger-6 {
+    opacity: 0;
+    animation: staggerIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .screen-enter .stagger-1 { animation-delay: 0.08s; }
+  .screen-enter .stagger-2 { animation-delay: 0.16s; }
+  .screen-enter .stagger-3 { animation-delay: 0.24s; }
+  .screen-enter .stagger-4 { animation-delay: 0.32s; }
+  .screen-enter .stagger-5 { animation-delay: 0.40s; }
+  .screen-enter .stagger-6 { animation-delay: 0.48s; }
+  @keyframes staggerIn {
+    from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── End Screen: staggered recap items ── */
+  .screen-enter .end-recap-item {
+    opacity: 0;
+    animation: staggerIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  /* ── Reveal Unveil Effect ── */
+  .reveal-unveil {
+    animation: revealUnveil 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes revealUnveil {
+    from { clip-path: inset(0 0 100% 0); transform: scale(1.05); }
+    to { clip-path: inset(0 0 0 0); transform: scale(1); }
+  }
+
+  /* ── Button Micro-interactions ── */
+  .btn:active {
+    transform: scale(0.95) !important;
+    transition-duration: 0.08s;
+  }
+
+  /* ── Modal Animations ── */
+  .modal-overlay.active {
+    animation: overlayFadeIn 0.3s ease forwards;
+  }
+  @keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .modal-success {
+    animation: modalBounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes modalBounceIn {
+    from { transform: scale(0.7); opacity: 0; }
+    50% { transform: scale(1.05); }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .bounce-in {
+    animation: iconBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+  }
+  @keyframes iconBounce {
+    from { transform: scale(0) rotate(-20deg); }
+    to { transform: scale(1) rotate(0deg); }
+  }
+  .shake-in {
+    animation: shakeIn 0.5s ease forwards;
+  }
+  @keyframes shakeIn {
+    0% { transform: scale(0.9); opacity: 0; }
+    20% { transform: scale(1) translateX(-10px); opacity: 1; }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(3px); }
+    100% { transform: translateX(0); }
+  }
+
+  /* ── Progress Dot Transitions ── */
+  .progress-dot {
+    transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .progress-dot.done {
+    animation: dotDone 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes dotDone {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.5); }
+    100% { transform: scale(1); }
+  }
+  .progress-dot.current {
+    animation: dotPulse 2s ease-in-out infinite;
+  }
+  @keyframes dotPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(220,111,69,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(220,111,69,0.15); }
+  }
+
+  /* ── Score Bar Slide Down ── */
+  .score-bar.visible {
+    animation: slideDown 0.3s ease forwards;
+  }
+  @keyframes slideDown {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
+  }
+
+  /* ── Reveal Badge Pop ── */
+  .reveal-badge {
+    animation: badgePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s both;
+  }
+  @keyframes badgePop {
+    from { transform: scale(0) rotate(-12deg); opacity: 0; }
+    to { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  /* ── End Screen Trophy Bounce ── */
+  #end-screen .end-icon {
+    animation: trophyBounce 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+  }
+  @keyframes trophyBounce {
+    from { transform: scale(0) translateY(30px); opacity: 0; }
+    60% { transform: scale(1.15) translateY(-5px); }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  /* ── Attempts Counter Pop ── */
+  .attempts-counter {
+    animation: counterPop 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @keyframes counterPop {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
   }

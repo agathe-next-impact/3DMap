@@ -26,12 +26,14 @@ export default function JeuDePiste() {
   const [gs, setGs] = useState<GameState | null>(null);
   const [screen, setScreen] = useState<Screen>('welcome');
   const [prevScreen, setPrevScreen] = useState<string>('clue');
+  const [transitioning, setTransitioning] = useState(false);
   const [arrivalModal, setArrivalModal] = useState<{ text: string } | null>(null);
   const [wrongModal, setWrongModal] = useState<string | null>(null);
   const [revealIdx, setRevealIdx] = useState(0);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBar, setShowInstallBar] = useState(false);
   const installDismissed = useRef(false);
+  const screenKey = useRef(0);
 
   // Load state on mount
   useEffect(() => {
@@ -82,10 +84,15 @@ export default function JeuDePiste() {
   }, []);
 
   const navigate = useCallback((to: Screen) => {
-    setScreen((current) => {
-      if (current !== 'map') setPrevScreen(current);
-      return to;
-    });
+    setTransitioning(true);
+    setTimeout(() => {
+      setScreen((current) => {
+        if (current !== 'map') setPrevScreen(current);
+        return to;
+      });
+      screenKey.current += 1;
+      setTransitioning(false);
+    }, 250);
   }, []);
 
   // Loading
@@ -231,14 +238,14 @@ export default function JeuDePiste() {
 
       {/* ── WELCOME ── */}
       {screen === 'welcome' && (
-        <div id="welcome" className="screen active">
-          <div className="welcome-icon">{'\u{1F3F0}'}</div>
-          <h1>Jeu de Piste</h1>
-          <p className="subtitle">
+        <div id="welcome" className={`screen active${transitioning ? ' screen-exit' : ' screen-enter'}`} key={`welcome-${screenKey.current}`}>
+          <div className="welcome-icon stagger-1">{'\u{1F3F0}'}</div>
+          <h1 className="stagger-2">Jeu de Piste</h1>
+          <p className="subtitle stagger-3">
             Explorez l&apos;Hermitage et la foret de Laigue a travers un parcours de
             decouverte. Retrouvez chaque lieu grace aux indices et percez ses secrets !
           </p>
-          <div className="welcome-stats">
+          <div className="welcome-stats stagger-4">
             <div className="welcome-stat">
               <span className="num">7</span>
               <span className="label">Etapes</span>
@@ -248,10 +255,10 @@ export default function JeuDePiste() {
               <span className="label">Parcours</span>
             </div>
           </div>
-          <button className="btn btn-primary" onClick={startGame}>
+          <button className="btn btn-primary stagger-5" onClick={startGame}>
             Commencer l&apos;aventure {'\u{2794}'}
           </button>
-          <div style={{ marginTop: '1rem' }}>
+          <div className="stagger-6" style={{ marginTop: '1rem' }}>
             <button className="btn btn-secondary btn-sm" onClick={() => navigate('map')}>
               {'\u{1F5FA}'} Voir la carte
             </button>
@@ -261,7 +268,7 @@ export default function JeuDePiste() {
 
       {/* ── CLUE ── */}
       {screen === 'clue' && (
-        <div id="clue-screen" className="screen active">
+        <div id="clue-screen" className={`screen active${transitioning ? ' screen-exit' : ' screen-enter'}`} key={`clue-${screenKey.current}`}>
           <div className="clue-header" style={{ top: topOffset }}>
             <span className="step-badge">Etape {state.currentIndex + 1}/{STOPS.length}</span>
             <div className="progress-dots">
@@ -276,22 +283,22 @@ export default function JeuDePiste() {
               {'\u{1F5FA}'} Carte
             </button>
           </div>
-          <div className="clue-image-container">
+          <div className="clue-image-container stagger-1">
             <div dangerouslySetInnerHTML={{ __html: generateSceneSVG(currentStopData).replace('class="svg-scene"', 'class="svg-scene clue-image blurred"') }} />
             <div className="clue-image-overlay">
               <div className="lock-icon">{'\u{1F50D}'}</div>
             </div>
           </div>
           <div className="clue-body">
-            <h2 className="clue-title">{clueTitle}</h2>
-            <div className="clue-text"><p>{currentStopData.clueText}</p></div>
-            <p className="clue-hint">{currentStopData.clueHint}</p>
+            <h2 className="clue-title stagger-2">{clueTitle}</h2>
+            <div className="clue-text stagger-3"><p>{currentStopData.clueText}</p></div>
+            <p className="clue-hint stagger-4">{currentStopData.clueHint}</p>
             {state.attempts > 0 && (
-              <div className="attempts-counter">
+              <div className="attempts-counter stagger-4">
                 {'\u{1F3AF}'} Tentatives : <strong>{state.attempts}</strong>
               </div>
             )}
-            <div className="clue-actions">
+            <div className="clue-actions stagger-5">
               <button className="btn btn-primary" onClick={() => navigate('map')}>
                 {'\u{1F5FA}'} Voir la carte
               </button>
@@ -302,7 +309,7 @@ export default function JeuDePiste() {
 
       {/* ── MAP ── */}
       {screen === 'map' && (
-        <div id="map-screen" className="screen active">
+        <div id="map-screen" className={`screen active${transitioning ? ' screen-exit' : ' screen-enter'}`} key={`map-${screenKey.current}`}>
           <div className="map-header" style={{ marginTop: topOffset }}>
             <button className="btn btn-outline btn-sm" onClick={() => navigate(prevScreen as Screen)}>
               {'\u{2190}'} Retour
@@ -331,21 +338,21 @@ export default function JeuDePiste() {
         const stop = STOPS[revealIdx];
         const isLast = state.currentIndex >= STOPS.length - 1;
         return (
-          <div id="reveal-screen" className="screen active">
-            <div className="reveal-image-container" style={{ position: 'relative' }}>
+          <div id="reveal-screen" className={`screen active${transitioning ? ' screen-exit' : ' screen-enter'}`} key={`reveal-${screenKey.current}`}>
+            <div className="reveal-image-container reveal-unveil" style={{ position: 'relative' }}>
               <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
                 dangerouslySetInnerHTML={{ __html: generateSceneSVG(stop) }} />
-              <div className="reveal-badge">{'\u{2714}'} Decouvert</div>
+              <div className="reveal-badge stagger-2">{'\u{2714}'} Decouvert</div>
             </div>
             <div className="reveal-body" style={{ paddingTop: `calc(1.5rem + ${topOffset}px)` }}>
-              <span className="reveal-category">{stop.categoryIcon} {stop.category}</span>
-              <h2>{stop.name}</h2>
-              <p className="reveal-description">{stop.description}</p>
-              <div className="reveal-history">
+              <span className="reveal-category stagger-2">{stop.categoryIcon} {stop.category}</span>
+              <h2 className="stagger-3">{stop.name}</h2>
+              <p className="reveal-description stagger-4">{stop.description}</p>
+              <div className="reveal-history stagger-5">
                 <h3>{'\u{1F4DC}'} Histoire</h3>
                 <p>{stop.history}</p>
               </div>
-              <div className="reveal-actions">
+              <div className="reveal-actions stagger-6">
                 <button className="btn btn-outline" onClick={() => navigate('map')}>
                   {'\u{1F5FA}'} Voir la carte
                 </button>
@@ -362,21 +369,21 @@ export default function JeuDePiste() {
       {screen === 'end' && (() => {
         const level = getFinalLevel(total, max);
         return (
-          <div id="end-screen" className="screen active">
-            <div className="end-icon">{'\u{1F3C6}'}</div>
-            <h1>Parcours termine !</h1>
-            <p className="subtitle">Vous avez explore tous les lieux du domaine de l&apos;Hermitage.</p>
-            <div className="end-total-score">
+          <div id="end-screen" className={`screen active${transitioning ? ' screen-exit' : ' screen-enter'}`} key={`end-${screenKey.current}`}>
+            <div className="end-icon stagger-1">{'\u{1F3C6}'}</div>
+            <h1 className="stagger-2">Parcours termine !</h1>
+            <p className="subtitle stagger-3">Vous avez explore tous les lieux du domaine de l&apos;Hermitage.</p>
+            <div className="end-total-score stagger-4">
               <span className="total-pts">{total} / {max} pts</span>
               <span className="total-max" dangerouslySetInnerHTML={{ __html: renderStars(Math.round(total / max * 3)) }} />
               <span className={`end-level ${level.cls}`}>{level.label}</span>
             </div>
             <div className="end-recap">
-              {order.map((stopIdx) => {
+              {order.map((stopIdx, i) => {
                 const s = STOPS[stopIdx];
                 const stopScore = state.scores.find((sc) => sc.stopIndex === stopIdx);
                 return (
-                  <div key={stopIdx} className="end-recap-item">
+                  <div key={stopIdx} className="end-recap-item" style={{ animationDelay: `${0.4 + i * 0.1}s` }}>
                     <span className="emoji">{s.emoji}</span>
                     <span className="name">{s.name}</span>
                     {stopScore && (
@@ -389,7 +396,7 @@ export default function JeuDePiste() {
                 );
               })}
             </div>
-            <button className="btn btn-primary" onClick={resetGame} style={{ marginTop: '1.5rem' }}>
+            <button className="btn btn-primary stagger-6" onClick={resetGame} style={{ marginTop: '1.5rem' }}>
               Recommencer {'\u{1F504}'}
             </button>
           </div>
@@ -399,8 +406,8 @@ export default function JeuDePiste() {
       {/* ── ARRIVAL MODAL ── */}
       {arrivalModal && (
         <div className="modal-overlay active">
-          <div className="modal">
-            <div className="modal-icon">{'\u{1F389}'}</div>
+          <div className="modal modal-success">
+            <div className="modal-icon bounce-in">{'\u{1F389}'}</div>
             <h3>Vous etes arrive !</h3>
             <p dangerouslySetInnerHTML={{ __html: arrivalModal.text }} />
             <button className="btn btn-success" onClick={revealCurrentPoint}>
@@ -413,7 +420,7 @@ export default function JeuDePiste() {
       {/* ── WRONG MODAL ── */}
       {wrongModal && (
         <div className="modal-overlay active">
-          <div className="modal modal-wrong">
+          <div className="modal modal-wrong shake-in">
             <div className="modal-icon">{'\u{274C}'}</div>
             <h3>Ce n&apos;est pas le bon lieu !</h3>
             <p>{wrongModal}</p>
