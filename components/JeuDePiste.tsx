@@ -52,6 +52,9 @@ export default function JeuDePiste() {
 
   // PWA install prompt
   useEffect(() => {
+    const isMobileOrTablet = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      || (navigator.maxTouchPoints > 0 && window.matchMedia('(max-width: 1024px)').matches);
+    if (!isMobileOrTablet) return;
     const handler = (e: Event) => {
       e.preventDefault();
       const evt = e as BeforeInstallPromptEvent;
