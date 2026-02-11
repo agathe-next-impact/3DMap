@@ -61,8 +61,16 @@ export function loadState(): GameState {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const state: GameState = JSON.parse(saved);
+      // Backward compat: ensure shuffleOrder for old saves
       if (state.started && !state.shuffleOrder) {
         state.shuffleOrder = STOPS.map((_, i) => i);
+      }
+      // Backward compat: ensure time fields exist
+      if (state.startedAt === undefined) state.startedAt = null;
+      if (state.completedAt === undefined) state.completedAt = null;
+      // Validate shuffleOrder contains all stops
+      if (state.shuffleOrder && state.shuffleOrder.length !== STOPS.length) {
+        state.shuffleOrder = shuffleArray(STOPS.map((_, i) => i));
       }
       return state;
     }
