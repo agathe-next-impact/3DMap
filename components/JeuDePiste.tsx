@@ -11,10 +11,16 @@ import {
   createInitialState,
   shuffleArray,
   computeScore,
+  getGuessScore,
+  getMaxGuessScore,
   getTotalScore,
   getMaxScore,
   getFinalLevel,
   renderStars,
+  computeTimeBonus,
+  getElapsedMs,
+  getMaxTimeBonus,
+  formatTime,
   SCORE_LEVELS,
 } from '@/lib/game-state';
 
@@ -32,8 +38,18 @@ export default function JeuDePiste() {
   const [revealIdx, setRevealIdx] = useState(0);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBar, setShowInstallBar] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const installDismissed = useRef(false);
   const screenKey = useRef(0);
+
+  // Live timer
+  useEffect(() => {
+    if (!gs || !gs.startedAt || gs.completed) return;
+    const tick = () => setElapsed(Date.now() - (gs.startedAt as number));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [gs?.startedAt, gs?.completed]);
 
   // Load state on mount
   useEffect(() => {
@@ -108,7 +124,11 @@ export default function JeuDePiste() {
   const currentStopData = STOPS[currentStopIdx];
 
   // Scoring helpers
-  const total = getTotalScore(state);
+  const guessTotal = getGuessScore(state);
+  const guessMax = getMaxGuessScore();
+  const timeElapsed = state.completed ? getElapsedMs(state) : elapsed;
+  const timeBonus = computeTimeBonus(timeElapsed);
+  const total = guessTotal + timeBonus.points;
   const max = getMaxScore();
   const visited = state.visitedIndices.length;
 
@@ -117,6 +137,7 @@ export default function JeuDePiste() {
     update((s) => ({
       ...s,
       started: true,
+      startedAt: Date.now(),
       shuffleOrder: shuffleArray(STOPS.map((_, i) => i)),
     }));
     navigate('clue');
@@ -170,7 +191,7 @@ export default function JeuDePiste() {
   }
 
   function finishGame() {
-    update((s) => ({ ...s, completed: true }));
+    update((s) => ({ ...s, completed: true, completedAt: Date.now() }));
     navigate('end');
   }
 
@@ -225,16 +246,16 @@ export default function JeuDePiste() {
       {hasScoreBar && (
         <div className="score-bar visible" style={hasInstallBar ? { top: 36 } : undefined}>
           <div className="sb-score">
-            <span className="sb-pts">{total}</span>
-            <span className="sb-max">/ {max} pts</span>
+            <span className="sb-pts">{guessTotal}</span>
+            <span className="sb-max">/ {guessMax}</span>
           </div>
           <div className="sb-divider" />
-          <div className="sb-stars" dangerouslySetInnerHTML={{
-            __html: renderStars(visited > 0 ? Math.round((total / (visited * SCORE_LEVELS[0].points)) * 3) : 0)
-          }} />
+          <div className="sb-timer">
+            {'\u{23F1}'} {formatTime(timeElapsed)}
+          </div>
           <div className="sb-divider" />
           <span className="sb-step">
-            {state.completed ? 'Termine !' : `Etape ${state.currentIndex + 1}/${STOPS.length}`}
+            {state.completed ? 'Termine !' : `${state.currentIndex + 1}/${STOPS.length}`}
           </span>
         </div>
       )}
@@ -371,6 +392,8 @@ export default function JeuDePiste() {
       {/* ── END ── */}
       {screen === 'end' && (() => {
         const level = getFinalLevel(total, max);
+        const finalElapsed = getElapsedMs(state);
+        const finalTimeBonus = computeTimeBonus(finalElapsed);
         return (
           <div id="end-screen" className={`screen active${transitioning ? ' screen-exit' : ' screen-enter'}`} key={`end-${screenKey.current}`}>
             <div className="end-icon stagger-1">{'\u{1F3C6}'}</div>
@@ -381,12 +404,25 @@ export default function JeuDePiste() {
               <span className="total-max" dangerouslySetInnerHTML={{ __html: renderStars(Math.round(total / max * 3)) }} />
               <span className={`end-level ${level.cls}`}>{level.label}</span>
             </div>
+
+            <div className="end-score-breakdown stagger-5">
+              <div className="breakdown-row">
+                <span className="breakdown-label">{'\u{1F3AF}'} Devinettes</span>
+                <span className="breakdown-value">{guessTotal} / {guessMax} pts</span>
+              </div>
+              <div className="breakdown-row">
+                <span className="breakdown-label">{'\u{23F1}'} Temps ({formatTime(finalElapsed)})</span>
+                <span className="breakdown-value">+{finalTimeBonus.points} / {getMaxTimeBonus()} pts</span>
+              </div>
+              <div className="breakdown-bracket">{finalTimeBonus.label}</div>
+            </div>
+
             <div className="end-recap">
               {order.map((stopIdx, i) => {
                 const s = STOPS[stopIdx];
                 const stopScore = state.scores.find((sc) => sc.stopIndex === stopIdx);
                 return (
-                  <div key={stopIdx} className="end-recap-item" style={{ animationDelay: `${0.4 + i * 0.1}s` }}>
+                  <div key={stopIdx} className="end-recap-item" style={{ animationDelay: `${0.5 + i * 0.1}s` }}>
                     <span className="emoji">{s.emoji}</span>
                     <span className="name">{s.name}</span>
                     {stopScore && (

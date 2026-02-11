@@ -9,6 +9,8 @@ export interface GameState {
   started: boolean;
   completed: boolean;
   shuffleOrder: number[] | null;
+  startedAt: number | null;
+  completedAt: number | null;
 }
 
 export interface StopScore {
@@ -42,7 +44,9 @@ export function createInitialState(): GameState {
     scores: [],
     started: false,
     completed: false,
-    shuffleOrder: null
+    shuffleOrder: null,
+    startedAt: null,
+    completedAt: null,
   };
 }
 
@@ -82,12 +86,64 @@ export function computeScore(attempts: number): ScoreLevel {
   return { ...SCORE_LEVELS[2] };
 }
 
-export function getTotalScore(state: GameState): number {
+export function getGuessScore(state: GameState): number {
   return state.scores.reduce((sum, s) => sum + s.points, 0);
 }
 
-export function getMaxScore(): number {
+export function getMaxGuessScore(): number {
   return STOPS.length * SCORE_LEVELS[0].points;
+}
+
+// Time bonus brackets: every 5 minutes reduces the bonus
+// Max time bonus equals max guess score so each is 50% of final score
+const TIME_BRACKETS: { maxMinutes: number; points: number }[] = [
+  { maxMinutes: 5, points: 700 },
+  { maxMinutes: 10, points: 600 },
+  { maxMinutes: 15, points: 500 },
+  { maxMinutes: 20, points: 400 },
+  { maxMinutes: 25, points: 300 },
+  { maxMinutes: 30, points: 200 },
+  { maxMinutes: 35, points: 100 },
+];
+const TIME_BONUS_MIN = 50;
+
+export function getMaxTimeBonus(): number {
+  return TIME_BRACKETS[0].points;
+}
+
+export function computeTimeBonus(elapsedMs: number): { points: number; label: string; bracket: string } {
+  const minutes = elapsedMs / 60000;
+  for (const b of TIME_BRACKETS) {
+    if (minutes <= b.maxMinutes) {
+      return {
+        points: b.points,
+        label: b.points === TIME_BRACKETS[0].points ? 'Temps parfait !' : 'Bon rythme !',
+        bracket: `< ${b.maxMinutes} min`,
+      };
+    }
+  }
+  return { points: TIME_BONUS_MIN, label: 'Promenade tranquille', bracket: '> 35 min' };
+}
+
+export function getElapsedMs(state: GameState): number {
+  if (!state.startedAt) return 0;
+  const end = state.completedAt || Date.now();
+  return end - state.startedAt;
+}
+
+export function formatTime(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+export function getTotalScore(state: GameState): number {
+  return getGuessScore(state) + computeTimeBonus(getElapsedMs(state)).points;
+}
+
+export function getMaxScore(): number {
+  return getMaxGuessScore() + getMaxTimeBonus();
 }
 
 export function getFinalLevel(total: number, max: number): { label: string; cls: string } {
