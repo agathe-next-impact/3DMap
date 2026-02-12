@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(cmd /c \"dir c:\\\\dev\\\\jeu-piste-hermitage\\\\public\")",
+      "Bash(cmd /c \"mkdir c:\\\\dev\\\\jeu-piste-hermitage\\\\public\\\\images\\\\stops\")"
+    ]
+  }
+}

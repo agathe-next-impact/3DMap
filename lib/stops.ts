@@ -6,6 +6,7 @@ export interface Stop {
   emoji: string;
   category: string;
   categoryIcon: string;
+  image: string;
   clueText: string;
   clueHint: string;
   description: string;
@@ -22,6 +23,7 @@ export const STOPS: Stop[] = [
     emoji: '\u{1F33A}',
     category: 'Nature',
     categoryIcon: '\u{1F33F}',
+    image: '/images/stops/jardins.jpg',
     clueText: "Au coeur du domaine, un espace ou la nature a ete apprivoisee depuis des siecles. Fleurs, legumes et herbes aromatiques y poussent dans un ecrin de pierre. Cherchez les murs qui protegent du vent...",
     clueHint: "Regardez du cote sud du domaine, la ou les rangs de plantations forment des lignes regulieres.",
     description: "Les jardins de l'Hermitage sont un ensemble de jardins potagers et d'agrement qui s'etendent au sud du domaine principal. Entoures de murs de pierre, ils forment un microclimat ideal pour la culture de varietes anciennes de legumes et de plantes medicinales.",
@@ -36,6 +38,7 @@ export const STOPS: Stop[] = [
     emoji: '\u{1F528}',
     category: 'Artisanat',
     categoryIcon: '\u{1F3ED}',
+    image: '/images/stops/ateliers.jpg',
     clueText: "Dans ce lieu, le bois et le metal prenaient forme sous les mains habiles des artisans. Les grandes portes s'ouvrent sur un espace ou resonnaient jadis les coups de marteau...",
     clueHint: "Remontez vers le nord depuis les jardins. Le batiment a un toit en forme de grange arrondie.",
     description: "Les ateliers du domaine accueillaient forgerons, menuisiers et charpentiers. Ces batiments a l'architecture fonctionnelle, avec leurs grandes ouvertures et leur toiture caracteristique, etaient le coeur de l'activite artisanale de l'Hermitage.",
@@ -50,6 +53,7 @@ export const STOPS: Stop[] = [
     emoji: '\u{1F3E0}',
     category: 'Patrimoine',
     categoryIcon: '\u{1F3DB}',
+    image: '/images/stops/grande-maison.jpg',
     clueText: "La demeure principale du domaine se dresse fierement avec ses trois niveaux et ses colombages. Son pignon regarde vers la foret comme un visage bienveillant...",
     clueHint: "Continuez vers le nord-est depuis les ateliers. C'est le plus grand batiment du domaine.",
     description: "La Grande Maison est le batiment principal de l'Hermitage. Cette imposante demeure a colombages de trois etages temoigne de l'architecture traditionnelle picarde. Son pignon orne de colombages en croix de Saint-Andre est un element remarquable du patrimoine local.",
@@ -64,6 +68,7 @@ export const STOPS: Stop[] = [
     emoji: '\u{26FA}',
     category: 'Insolite',
     categoryIcon: '\u{1F3D5}',
+    image: '/images/stops/tipis.jpg',
     clueText: "Au nord du domaine, des structures etonnantes se dressent entre les arbres. Ni tout a fait maisons, ni tout a fait tentes, elles offrent un abri original en pleine nature...",
     clueHint: "Dirigez-vous vers le nord-ouest, sur la petite elevation. Vous les verrez depasser au-dessus des buissons.",
     description: "Les tipis et cabanons occupent une clairiere au nord du domaine. Ces structures en bois et toile s'integrent harmonieusement dans le paysage forestier et offrent une experience d'hebergement unique, entre confort et communion avec la nature.",
@@ -78,6 +83,7 @@ export const STOPS: Stop[] = [
     emoji: '\u{1F3E1}',
     category: 'Patrimoine',
     categoryIcon: '\u{1F3DB}',
+    image: '/images/stops/mere-mitage.jpg',
     clueText: "Ce lieu porte un nom mysterieux, jeu de mots entre l'ermitage et le mitage. Un batiment complexe, fait d'ajouts successifs, qui raconte a lui seul l'histoire du domaine...",
     clueHint: "Revenez vers l'est, entre la Grande Maison et les tipis. Le batiment semble fait de plusieurs constructions imbriquees.",
     description: "La Mere Mitage est un ensemble de batiments anciens dont le nom evoque a la fois l'Hermitage et le \"mitage\" architecturale au fil du temps. Chaque epoque a laisse sa marque : un mur medieval ici, une fenetre Renaissance la, un toit du XIXe siecle plus loin.",
@@ -92,6 +98,7 @@ export const STOPS: Stop[] = [
     emoji: '\u{26F0}',
     category: 'Paysage',
     categoryIcon: '\u{1F304}',
+    image: '/images/stops/plateau.jpg',
     clueText: "Prenez de la hauteur ! Ce point culminant du domaine offre une vue degagee sur la vallee et la foret environnante. Un lieu de contemplation ou le vent souffle librement...",
     clueHint: "Dirigez-vous a l'ouest, vers le point le plus haut du terrain. L'horizon s'ouvre devant vous.",
     description: "Le Plateau est le point culminant du domaine de l'Hermitage. Cette elevation naturelle offre un panorama exceptionnel sur la foret de Laigue au nord, la vallee a l'est et les champs a l'ouest. C'est un lieu de promenade et de contemplation privilegie.",
@@ -106,6 +113,7 @@ export const STOPS: Stop[] = [
     emoji: '\u{1F332}',
     category: 'Mystere',
     categoryIcon: '\u{1F3DA}',
+    image: '/images/stops/maison-foret.jpg',
     clueText: "Au bout du chemin, cachee sous la canopee, une maison semble tout droit sortie d'un conte. Les arbres l'enveloppent comme pour la proteger du monde exterieur...",
     clueHint: "Descendez vers le sud-ouest depuis le plateau. Enfoncez-vous dans la foret, la maison se cache entre les grands arbres.",
     description: "La Maison dans la Foret est une habitation isolee nichee au coeur de la foret de Laigue. Son architecture discrete, avec ses murs couverts de lierre et son toit de tuiles moussu, se fond dans le paysage forestier comme si elle avait pousse avec les arbres.",

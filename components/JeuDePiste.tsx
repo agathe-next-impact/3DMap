@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { STOPS } from '@/lib/stops';
-import { generateSceneSVG } from '@/lib/svg-scenes';
 import {
   GameState,
   loadState,
@@ -222,10 +221,6 @@ export default function JeuDePiste() {
           <div className="sb-stars" dangerouslySetInnerHTML={{
             __html: renderStars(visited > 0 ? Math.round((total / (visited * SCORE_LEVELS[0].points)) * 3) : 0)
           }} />
-          <div className="sb-divider" />
-          <span className="sb-step">
-            {state.completed ? 'Termine !' : `Etape ${state.currentIndex + 1}/${STOPS.length}`}
-          </span>
         </div>
       )}
 
@@ -277,9 +272,8 @@ export default function JeuDePiste() {
             </button>
           </div>
           <div className="clue-image-container">
-            <div dangerouslySetInnerHTML={{ __html: generateSceneSVG(currentStopData).replace('class="svg-scene"', 'class="svg-scene clue-image blurred"') }} />
+            <img src={currentStopData.image} alt="" className="clue-image blurred" />
             <div className="clue-image-overlay">
-              <div className="lock-icon">{'\u{1F50D}'}</div>
             </div>
           </div>
           <div className="clue-body">
@@ -333,12 +327,11 @@ export default function JeuDePiste() {
         return (
           <div id="reveal-screen" className="screen active">
             <div className="reveal-image-container" style={{ position: 'relative' }}>
-              <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
-                dangerouslySetInnerHTML={{ __html: generateSceneSVG(stop) }} />
+              <img src={stop.image} alt={stop.name} className="reveal-image" />
               <div className="reveal-badge">{'\u{2714}'} Decouvert</div>
             </div>
             <div className="reveal-body" style={{ paddingTop: `calc(1.5rem + ${topOffset}px)` }}>
-              <span className="reveal-category">{stop.categoryIcon} {stop.category}</span>
+              <span className="reveal-category">{stop.category}</span>
               <h2>{stop.name}</h2>
               <p className="reveal-description">{stop.description}</p>
               <div className="reveal-history">
