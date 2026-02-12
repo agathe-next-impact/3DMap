@@ -57,6 +57,10 @@ export function loadState(): GameState {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const state: GameState = JSON.parse(saved);
+      // Reset if shuffleOrder doesn't match current STOPS count (e.g. stops were added/removed)
+      if (state.started && state.shuffleOrder && state.shuffleOrder.length !== STOPS.length) {
+        return createInitialState();
+      }
       if (state.started && !state.shuffleOrder) {
         state.shuffleOrder = STOPS.map((_, i) => i);
       }
@@ -103,14 +107,4 @@ export function renderStars(count: number): string {
     html += i < count ? '\u{2B50}' : '<span class="star-off">\u{2B50}</span>';
   }
   return html;
-}
-
-export function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

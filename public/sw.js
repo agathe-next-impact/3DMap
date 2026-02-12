@@ -1,16 +1,11 @@
-const CACHE_NAME = 'jeu-de-piste-v1';
+const CACHE_NAME = 'jeu-de-piste-v2';
 
 const PRECACHE_URLS = [
-  './jeu-de-piste.html',
-  './manifest.json',
-  './icons/icon.svg',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
-];
-
-const RUNTIME_CACHE_URLS = [
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+  '/',
+  '/manifest.json',
+  '/icons/icon.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png'
 ];
 
 // Install: pre-cache app shell
@@ -70,23 +65,6 @@ self.addEventListener('fetch', (event) => {
           return response;
         }).catch(() => cached);
         return cached || fetchPromise;
-      })
-    );
-    return;
-  }
-
-  // CDN assets (Leaflet): cache first, network fallback
-  if (RUNTIME_CACHE_URLS.some((url) => request.url.startsWith(url))) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        });
       })
     );
     return;

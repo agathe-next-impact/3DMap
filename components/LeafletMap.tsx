@@ -114,8 +114,8 @@ export default function LeafletMap({
       const isVisited = gameState.visitedIndices.includes(i);
       const isWrongGuess = gameState.wrongGuesses.includes(i);
 
-      const markerClass = isVisited ? 'marker-visited' : 'marker-locked';
-      const markerContent = isVisited ? '&#x2714;' : '&#x1F512;';
+      const markerClass = isVisited ? 'marker-visited' : isWrongGuess ? 'marker-wrong-guess' : 'marker-locked';
+      const markerContent = isVisited ? '&#x2714;' : isWrongGuess ? '&#x2716;' : '&#x1F512;';
 
       const icon = L.divIcon({
         className: '',
@@ -140,7 +140,7 @@ export default function LeafletMap({
         </div>`;
       } else if (!gameState.started) {
         popupHTML = `<div class="popup-content">
-          <h3>&#x1F512; ${stop.name}</h3>
+          <h3>&#x1F512; Lieu mystere</h3>
           <p>Lancez le parcours pour decouvrir ce lieu !</p>
           <button class="btn btn-primary btn-sm" onclick="window.__mapGoBack(); window.__mapStartGame();">
             Commencer l'aventure &#x2794;
@@ -148,20 +148,23 @@ export default function LeafletMap({
         </div>`;
       } else if (isViewOnly) {
         popupHTML = `<div class="popup-content">
-          <h3>&#x1F512; ${stop.name}</h3>
+          <h3>&#x1F512; Lieu mystere</h3>
           <p>Vous devez afficher l'indice suivant</p>
           <button class="btn btn-outline btn-sm" onclick="window.__mapGoBack();">
             &#x2190; Retour
           </button>
         </div>`;
+      } else if (isWrongGuess) {
+        popupHTML = `<div class="popup-content">
+          <h3>&#x2716; Lieu mystere</h3>
+          <p>Vous avez deja teste ce lieu, ce n'est pas le bon.</p>
+          <button class="btn btn-outline btn-sm" onclick="window.__mapGoToClue();">&#x1F50D; Revoir l'indice</button>
+        </div>`;
       } else {
         popupHTML = `<div class="popup-content">
-          <h3>&#x1F512; ${stop.name}</h3>
-          <p>${isWrongGuess ? "Ce n'est pas le bon lieu." : "Est-ce le lieu de l'indice ?"}</p>
-          ${isWrongGuess
-            ? `<button class="btn btn-outline btn-sm" onclick="window.__mapGoToClue();">&#x1F50D; Revoir l'indice</button>`
-            : `<button class="btn btn-primary btn-sm" onclick="window.__mapTryGuess(${i})">C'est ici !</button>`
-          }
+          <h3>&#x1F512; Lieu mystere</h3>
+          <p>Est-ce le lieu de l'indice ?</p>
+          <button class="btn btn-primary btn-sm" onclick="window.__mapTryGuess(${i})">C'est ici !</button>
         </div>`;
       }
 

@@ -179,10 +179,9 @@ export default function JeuDePiste() {
     navigate('clue');
   }
 
-  const ordinals = ['Premier', 'Deuxieme', 'Troisieme', 'Quatrieme', 'Cinquieme', 'Sixieme', 'Septieme'];
   const clueTitle = state.currentIndex === STOPS.length - 1
     ? 'Dernier indice'
-    : (ordinals[state.currentIndex] || `Indice ${state.currentIndex + 1}`) + ' indice';
+    : `Indice ${state.currentIndex + 1}`;
 
   // Top offset calculation
   const hasInstallBar = showInstallBar;
@@ -230,12 +229,13 @@ export default function JeuDePiste() {
           <div className="welcome-icon">{'\u{1F3F0}'}</div>
           <h1>Jeu de Piste</h1>
           <p className="subtitle">
-            Explorez l&apos;Hermitage et la foret de Laigue a travers un parcours de
-            decouverte. Retrouvez chaque lieu grace aux indices et percez ses secrets !
+            Bienvenue à l’Hermitage, un lieu chargé d’Histoire(s).
+Nous vous proposons d’aller à la recherche des traces laissées par le temps sur le site : autant d’indices pour découvrir l’histoire du domaine et des personnes qui l’ont façonné.
+Votre voyage à l’Hermitage commence maintenant !
           </p>
           <div className="welcome-stats">
             <div className="welcome-stat">
-              <span className="num">7</span>
+              <span className="num">{STOPS.length}</span>
               <span className="label">Etapes</span>
             </div>
             <div className="welcome-stat">
@@ -272,7 +272,7 @@ export default function JeuDePiste() {
             </button>
           </div>
           <div className="clue-image-container">
-            <img src={currentStopData.image} alt="" className="clue-image blurred" />
+            <img src={currentStopData.image} alt="Image indice - lieu a decouvrir" className="clue-image blurred" />
             <div className="clue-image-overlay">
             </div>
           </div>

@@ -50,19 +50,33 @@
     justify-content: center;
     text-align: center;
     padding: 2rem;
-    background: linear-gradient(160deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%);
-    color: white;
+    background: white;
+    color: var(--brand-dark);
     position: relative;
     overflow: hidden;
   }
   #welcome::before {
     content: '';
     position: absolute;
-    top: -50%; left: -50%;
-    width: 200%; height: 200%;
-    background: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.08) 0%, transparent 60%),
-                radial-gradient(ellipse at 70% 80%, rgba(255,255,255,0.05) 0%, transparent 50%);
-    pointer-events: none;
+    inset: 0;
+    background: linear-gradient(135deg, var(--brand-teal) 0%, var(--brand-green) 100%);
+    background-image: url('/images/stops/grande-maison.jpg');
+    background-size: cover;
+    background-position: center;
+    filter: blur(4px);
+    transform: scale(1.1);
+    z-index: 0;
+  }
+  #welcome::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.75);
+    z-index: 1;
+  }
+  #welcome > * {
+    position: relative;
+    z-index: 2;
   }
   .welcome-icon {
     font-size: 4rem;
@@ -130,19 +144,19 @@
     background: var(--brand-teal);
   }
   .btn-secondary {
-    background: var(--brand-coral);
+    background: var(--brand-teal);
     color: white;
-    backdrop-filter: blur(10px);
   }
   .btn-secondary:hover {
-    background: rgba(255,255,255,0.25);
+    background: var(--brand-dark);
   }
   .btn-outline {
-    background: var(--brand-coral);
-    color: white;
+    background: transparent;
+    color: var(--brand-coral);
+    border: 2px solid var(--brand-coral);
   }
   .btn-outline:hover {
-    background: var(--primary);
+    background: var(--brand-coral);
     color: white;
   }
   .btn-success {
@@ -183,11 +197,14 @@
   }
   .progress-dots {
     display: flex;
-    gap: 6px;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 50%;
   }
   .progress-dot {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: var(--bg-dark);
     transition: all 0.3s;
@@ -197,7 +214,7 @@
   }
   .progress-dot.current {
     background: var(--brand-pink);
-    box-shadow: 0 0 0 3px rgba(220,111,69,0.3);
+    box-shadow: 0 0 0 2px rgba(220,111,69,0.3);
   }
 
   .clue-image-container {
@@ -230,24 +247,10 @@
     pointer-events: none;
     transition: opacity 0.6s;
   }
-  .clue-image-overlay .lock-icon {
-    font-size: 3rem;
-    background: rgba(0,0,0,0.4);
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(4px);
-  }
-  .clue-image-overlay.hidden {
-    opacity: 0;
-  }
 
   .clue-body {
     flex: 1;    
-    padding: 1.5rem !important;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1.2rem;
@@ -378,7 +381,7 @@
     gap: 0.4rem;
   }
   .reveal-body {
-    padding: 1.5rem !important;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1.2rem;
@@ -533,6 +536,11 @@
     background: var(--locked);
     color: white;
   }
+  .marker-wrong-guess {
+    background: var(--brand-pink);
+    color: white;
+    opacity: 0.7;
+  }
   .user-location {
     width: 16px;
     height: 16px;
@@ -605,35 +613,6 @@
     #map-screen {
       max-width: 100%;
     }
-  }
-
-  /* ── SVG Images ── */
-  .svg-scene {
-    width: 100%;
-    height: 100%;
-  }
-
-  /* ── Geolocation distance ── */
-  .geo-distance {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1rem;
-    background: white;
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-    font-size: 0.9rem;
-  }
-  .geo-distance .dist-value {
-    font-weight: bold;
-    color: var(--primary);
-  }
-  .geo-distance.near {
-    background: var(--success);
-    color: white;
-  }
-  .geo-distance.near .dist-value {
-    color: white;
   }
 
   /* ── Scoring ── */
@@ -741,9 +720,6 @@
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.2s;
-  }
-  .pwa-install-bar .pwa-btn:hover {
-    background: var(--brand-coral);
   }
   .pwa-install-bar .pwa-close {
     background: none;
@@ -860,18 +836,3 @@
     color: var(--primary);
   }
 
-  /* ── Animations ── */
-  .fade-in {
-    animation: fadeIn 0.5s ease;
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .slide-up {
-    animation: slideUp 0.5s ease;
-  }
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(30px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
