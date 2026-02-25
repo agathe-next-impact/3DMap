@@ -19,9 +19,9 @@ export const metadata: Metadata = {
   description: "Explorez l'Hermitage et la foret de Laigue a travers un parcours de decouverte interactif.",
   manifest: '/manifest.json',
   icons: [
-    { rel: 'icon', type: 'image/svg+xml', url: '/icons/icon.svg' },
-    { rel: 'icon', type: 'image/png', sizes: '192x192', url: '/icons/icon-192.png' },
-    { rel: 'apple-touch-icon', url: '/icons/icon-192.png' },
+    { rel: 'icon', type: 'image/svg+xml', url: '/icons/logo.png' },
+    { rel: 'icon', type: 'image/png', sizes: '192x192', url: '/icons/logo.png' },
+    { rel: 'apple-touch-icon', url: '/icons/logo.png' },
   ],
   appleWebApp: {
     capable: true,
