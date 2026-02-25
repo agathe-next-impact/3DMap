@@ -339,9 +339,6 @@ Votre voyage à l’Hermitage commence maintenant !
                 <p>{stop.history}</p>
               </div>
               <div className="reveal-actions">
-                <button className="btn btn-outline" onClick={() => navigate('map')}>
-                  {'\u{1F5FA}'} Voir la carte
-                </button>
                 <button className="btn btn-primary" onClick={isLast ? finishGame : nextClue}>
                   {isLast ? <>Terminer le parcours {'\u{1F389}'}</> : <>Indice suivant {'\u{2794}'}</>}
                 </button>

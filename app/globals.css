@@ -368,7 +368,7 @@
   }
   .reveal-badge {
     position: absolute;
-    top: 3rem;
+    top: 0rem;
     left: 0;
     background: var(--success);
     color: white;
@@ -381,7 +381,7 @@
     gap: 0.4rem;
   }
   .reveal-body {
-    padding: 1.5rem;
+    padding: 1.5rem !important;
     display: flex;
     flex-direction: column;
     gap: 1.2rem;
@@ -442,7 +442,7 @@
     justify-content: center;
     text-align: center;
     padding: 2rem;
-    background: linear-gradient(160deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%);
+    background: #e75754;
     color: white;
   }
   .end-icon {
@@ -471,7 +471,7 @@
     display: flex;
     align-items: center;
     gap: 0.8rem;
-    background: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.3);
     border-radius: 12px;
     padding: 0.6rem 1rem;
     text-align: left;
@@ -637,7 +637,7 @@
   }
   .score-inline .pts {
     font-weight: bold;
-    color: var(--primary);
+    color: white;
   }
 
   /* End screen score */
@@ -668,8 +668,9 @@
     font-weight: bold;
   }
   .end-level.gold {
-    background: var(--brand-orange);
+    background: var(--brand-green);
     color: white;
+    margin-left: 1rem;
   }
   .end-level.silver {
     background: var(--brand-teal);
