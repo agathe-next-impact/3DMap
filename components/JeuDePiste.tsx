@@ -28,6 +28,7 @@ export default function JeuDePiste() {
   const [arrivalModal, setArrivalModal] = useState<{ text: string } | null>(null);
   const [wrongModal, setWrongModal] = useState<string | null>(null);
   const [revealIdx, setRevealIdx] = useState(0);
+  const [showHint, setShowHint] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBar, setShowInstallBar] = useState(false);
   const installDismissed = useRef(false);
@@ -81,6 +82,7 @@ export default function JeuDePiste() {
   }, []);
 
   const navigate = useCallback((to: Screen) => {
+    if (to === 'clue') setShowHint(false);
     setScreen((current) => {
       if (current !== 'map') setPrevScreen(current);
       return to;
@@ -279,7 +281,14 @@ Votre voyage à l’Hermitage commence maintenant !
           <div className="clue-body">
             <h2 className="clue-title">{clueTitle}</h2>
             <div className="clue-text"><p>{currentStopData.clueText}</p></div>
-            <p className="clue-hint">{currentStopData.clueHint}</p>
+            {currentStopData.clueHint && (
+              <button className="btn btn-outline btn-sm" style={{ border: 'none' }} onClick={() => setShowHint(!showHint)}>
+                {showHint ? 'Masquer l\'aide' : 'Besoin d\'aide ?'}
+              </button>
+            )}
+            {showHint && currentStopData.clueHint && (
+              <p className="clue-hint">{currentStopData.clueHint}</p>
+            )}
             {state.attempts > 0 && (
               <div className="attempts-counter">
                 {'\u{1F3AF}'} Tentatives : <strong>{state.attempts}</strong>
