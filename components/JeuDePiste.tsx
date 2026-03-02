@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { motion, AnimatePresence } from 'framer-motion';
 import { STOPS } from '@/lib/stops';
 import {
   GameState,
@@ -21,6 +22,23 @@ const LeafletMap = dynamic(() => import('./LeafletMap'), { ssr: false });
 
 type Screen = 'welcome' | 'clue' | 'map' | 'reveal' | 'end';
 
+// Smooth cubic-bezier for natural motion
+const smooth = [0.25, 0.1, 0.25, 1] as const;
+const snappy = [0.4, 0, 0.2, 1] as const;
+
+// Only opacity + GPU-accelerated transforms, no layout-triggering props
+const fadeSlideUp = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+};
+
+const fadeOnly = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+};
+
 export default function JeuDePiste() {
   const [gs, setGs] = useState<GameState | null>(null);
   const [screen, setScreen] = useState<Screen>('welcome');
@@ -32,6 +50,15 @@ export default function JeuDePiste() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBar, setShowInstallBar] = useState(false);
   const installDismissed = useRef(false);
+  const hintRef = useRef<HTMLDivElement>(null);
+  const [hintHeight, setHintHeight] = useState(0);
+
+  // Measure hint content height for smooth animation
+  useEffect(() => {
+    if (hintRef.current) {
+      setHintHeight(hintRef.current.scrollHeight);
+    }
+  }, [showHint, gs]);
 
   // Load state on mount
   useEffect(() => {
@@ -225,208 +252,326 @@ export default function JeuDePiste() {
         </div>
       )}
 
-      {/* ── WELCOME ── */}
-      {screen === 'welcome' && (
-        <div id="welcome" className="screen active">
-          <div className="welcome-icon">{'\u{1F3F0}'}</div>
-          <h1>Jeu de Piste</h1>
-          <p className="subtitle">
-            Bienvenue à l’Hermitage, un lieu chargé d’Histoire(s).
-Nous vous proposons d’aller à la recherche des traces laissées par le temps sur le site : autant d’indices pour découvrir l’histoire du domaine et des personnes qui l’ont façonné.
-Votre voyage à l’Hermitage commence maintenant !
-          </p>
-          <div className="welcome-stats">
-            <div className="welcome-stat">
-              <span className="num">{STOPS.length}</span>
-              <span className="label">Etapes</span>
+      <AnimatePresence mode="wait">
+        {/* ── WELCOME ── */}
+        {screen === 'welcome' && (
+          <motion.div
+            key="welcome"
+            id="welcome"
+            className="screen active"
+            {...fadeSlideUp}
+            transition={{ duration: 0.3, ease: smooth }}
+          >
+            <div className="welcome-icon">{'\u{1F3F0}'}</div>
+            <h1>Jeu de Piste</h1>
+            <p className="subtitle">
+              {"Bienvenue \u00e0 l\u2019Hermitage, un lieu charg\u00e9 d\u2019Histoire(s). Nous vous proposons d\u2019aller \u00e0 la recherche des traces laiss\u00e9es par le temps sur le site\u00a0: autant d\u2019indices pour d\u00e9couvrir l\u2019histoire du domaine et des personnes qui l\u2019ont fa\u00e7onn\u00e9. Votre voyage \u00e0 l\u2019Hermitage commence maintenant\u00a0!"}
+            </p>
+            <div className="welcome-stats">
+              <motion.div
+                className="welcome-stat"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.15, duration: 0.25, ease: smooth }}
+              >
+                <span className="num">{STOPS.length}</span>
+                <span className="label">Etapes</span>
+              </motion.div>
+              <motion.div
+                className="welcome-stat"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.25, duration: 0.25, ease: smooth }}
+              >
+                <span className="num">~2 km</span>
+                <span className="label">Parcours</span>
+              </motion.div>
             </div>
-            <div className="welcome-stat">
-              <span className="num">~2 km</span>
-              <span className="label">Parcours</span>
-            </div>
-          </div>
-          <button className="btn btn-primary" onClick={startGame}>
-            Commencer l&apos;aventure {'\u{2794}'}
-          </button>
-          <div style={{ marginTop: '1rem' }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => navigate('map')}>
-              {'\u{1F5FA}'} Voir la carte
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── CLUE ── */}
-      {screen === 'clue' && (
-        <div id="clue-screen" className="screen active">
-          <div className="clue-header" style={{ top: topOffset }}>
-            <span className="step-badge">Etape {state.currentIndex + 1}/{STOPS.length}</span>
-            <div className="progress-dots">
-              {order.map((stopIdx, step) => {
-                let cls = 'progress-dot';
-                if (state.visitedIndices.includes(stopIdx)) cls += ' done';
-                else if (step === state.currentIndex) cls += ' current';
-                return <div key={step} className={cls} />;
-              })}
-            </div>
-            <button className="btn btn-outline btn-sm" onClick={() => navigate('map')}>
-              {'\u{1F5FA}'} Carte
-            </button>
-          </div>
-          <div className="clue-image-container">
-            <img src={currentStopData.image} alt="Image indice - lieu a decouvrir" className="clue-image blurred" />
-            <div className="clue-image-overlay">
-            </div>
-          </div>
-          <div className="clue-body">
-            <h2 className="clue-title">{clueTitle}</h2>
-            <div className="clue-text"><p>{currentStopData.clueText}</p></div>
-            {currentStopData.clueHint && (
-              <button className="btn btn-outline btn-sm" style={{ border: 'none' }} onClick={() => setShowHint(!showHint)}>
-                {showHint ? 'Masquer l\'aide' : 'Besoin d\'aide ?'}
-              </button>
-            )}
-            {showHint && currentStopData.clueHint && (
-              <p className="clue-hint">{currentStopData.clueHint}</p>
-            )}
-            {state.attempts > 0 && (
-              <div className="attempts-counter">
-                {'\u{1F3AF}'} Tentatives : <strong>{state.attempts}</strong>
-              </div>
-            )}
-            <div className="clue-actions">
-              <button className="btn btn-primary" onClick={() => navigate('map')}>
+            <motion.button className="btn btn-primary" onClick={startGame} whileTap={{ scale: 0.97 }}>
+              {"Commencer l\u2019aventure"} {'\u{2794}'}
+            </motion.button>
+            <div style={{ marginTop: '1rem' }}>
+              <motion.button className="btn btn-secondary btn-sm" onClick={() => navigate('map')} whileTap={{ scale: 0.97 }}>
                 {'\u{1F5FA}'} Voir la carte
-              </button>
+              </motion.button>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
 
-      {/* ── MAP ── */}
-      {screen === 'map' && (
-        <div id="map-screen" className="screen active">
-          <div className="map-header" style={{ marginTop: topOffset }}>
-            <button className="btn btn-outline btn-sm" onClick={() => navigate(prevScreen as Screen)}>
-              {'\u{2190}'} Retour
-            </button>
-            <h2>Carte du parcours</h2>
-            <span className="step-badge">{state.currentIndex + 1}/{STOPS.length}</span>
-          </div>
-          <LeafletMap
-            gameState={state}
-            previousScreen={prevScreen}
-            onTryGuess={tryGuess}
-            onShowReveal={(idx) => { setRevealIdx(idx); navigate('reveal'); }}
-            onGoBack={() => navigate(prevScreen as Screen)}
-            onGoToClue={() => navigate('clue')}
-            onStartGame={startGame}
-          />
-          <div className="map-legend">
-            <div className="legend-item"><div className="legend-dot visited" /><span>Decouvert</span></div>
-            <div className="legend-item"><div className="legend-dot locked" /><span>A trouver</span></div>
-          </div>
-        </div>
-      )}
-
-      {/* ── REVEAL ── */}
-      {screen === 'reveal' && (() => {
-        const stop = STOPS[revealIdx];
-        const isLast = state.currentIndex >= STOPS.length - 1;
-        return (
-          <div id="reveal-screen" className="screen active">
-            <div className="reveal-image-container" style={{ position: 'relative' }}>
-              <img src={stop.image} alt={stop.name} className="reveal-image" />
-              <div className="reveal-badge">{'\u{2714}'} Decouvert</div>
-            </div>
-            <div className="reveal-body" style={{ paddingTop: `calc(1.5rem + ${topOffset}px)` }}>
-              <span className="reveal-category">{stop.category}</span>
-              <h2>{stop.name}</h2>
-              <p className="reveal-description">{stop.description}</p>
-              <div className="reveal-history">
-                <h3>{'\u{1F4DC}'} Histoire</h3>
-                <p>{stop.history}</p>
+        {/* ── CLUE ── */}
+        {screen === 'clue' && (
+          <motion.div
+            key={'clue-' + state.currentIndex}
+            id="clue-screen"
+            className="screen active"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: snappy }}
+          >
+            <div className="clue-header" style={{ top: topOffset }}>
+              <span className="step-badge">Etape {state.currentIndex + 1}/{STOPS.length}</span>
+              <div className="progress-dots">
+                {order.map((stopIdx: number, step: number) => {
+                  let cls = 'progress-dot';
+                  if (state.visitedIndices.includes(stopIdx)) cls += ' done';
+                  else if (step === state.currentIndex) cls += ' current';
+                  return <div key={step} className={cls} />;
+                })}
               </div>
-              <div className="reveal-actions">
-                <button className="btn btn-primary" onClick={isLast ? finishGame : nextClue}>
-                  {isLast ? <>Terminer le parcours {'\u{1F389}'}</> : <>Indice suivant {'\u{2794}'}</>}
-                </button>
-              </div>
+              <motion.button className="btn btn-outline btn-sm" onClick={() => navigate('map')} whileTap={{ scale: 0.97 }}>
+                {'\u{1F5FA}'} Carte
+              </motion.button>
             </div>
-          </div>
-        );
-      })()}
-
-      {/* ── END ── */}
-      {screen === 'end' && (() => {
-        const level = getFinalLevel(total, max);
-        return (
-          <div id="end-screen" className="screen active">
-            <div className="end-icon">{'\u{1F3C6}'}</div>
-            <h1>Parcours termine !</h1>
-            <p className="subtitle">Vous avez explore tous les lieux du domaine de l&apos;Hermitage.</p>
-            <div className="end-total-score">
-              <span className="total-pts">{total} / {max} pts</span>
-              <span className="total-max" dangerouslySetInnerHTML={{ __html: renderStars(Math.round(total / max * 3)) }} />
-              <span className={`end-level ${level.cls}`}>{level.label}</span>
+            <div className="clue-image-container">
+              <img src={currentStopData.image} alt="Image indice - lieu a decouvrir" className="clue-image blurred" />
+              <div className="clue-image-overlay" />
             </div>
-            <div className="end-recap">
-              {order.map((stopIdx) => {
-                const s = STOPS[stopIdx];
-                const stopScore = state.scores.find((sc) => sc.stopIndex === stopIdx);
-                return (
-                  <div key={stopIdx} className="end-recap-item">
-                    <span className="emoji">{s.emoji}</span>
-                    <span className="name">{s.name}</span>
-                    {stopScore && (
-                      <span className="score-inline"
-                        dangerouslySetInnerHTML={{
-                          __html: `<span class="stars">${renderStars(stopScore.stars)}</span><span class="pts">${stopScore.points} pts</span>`
-                        }} />
-                    )}
+            <motion.div
+              className="clue-body"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.25, ease: smooth }}
+            >
+              <h2 className="clue-title">{clueTitle}</h2>
+              <div className="clue-text"><p>{currentStopData.clueText}</p></div>
+              {currentStopData.clueHint && (
+                <motion.button
+                  className="btn btn-outline btn-sm"
+                  style={{ border: 'none' }}
+                  onClick={() => setShowHint(!showHint)}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  {showHint ? "Masquer l\u2019aide" : "Besoin d\u2019aide ?"}
+                </motion.button>
+              )}
+              {currentStopData.clueHint && (
+                <motion.div
+                  initial={false}
+                  animate={{
+                    height: showHint ? hintHeight : 0,
+                    opacity: showHint ? 1 : 0,
+                  }}
+                  transition={{ duration: 0.3, ease: snappy }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div ref={hintRef}>
+                    <p className="clue-hint">{currentStopData.clueHint}</p>
                   </div>
-                );
-              })}
+                </motion.div>
+              )}
+              {state.attempts > 0 && (
+                <div className="attempts-counter">
+                  {'\u{1F3AF}'} Tentatives : <strong>{state.attempts}</strong>
+                </div>
+              )}
+              <div className="clue-actions">
+                <motion.button className="btn btn-primary" onClick={() => navigate('map')} whileTap={{ scale: 0.97 }}>
+                  {'\u{1F5FA}'} Voir la carte
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* ── MAP ── */}
+        {screen === 'map' && (
+          <motion.div
+            key="map"
+            id="map-screen"
+            className="screen active"
+            {...fadeOnly}
+            transition={{ duration: 0.2, ease: snappy }}
+          >
+            <div className="map-header" style={{ marginTop: topOffset }}>
+              <motion.button className="btn btn-outline btn-sm" onClick={() => navigate(prevScreen as Screen)} whileTap={{ scale: 0.97 }}>
+                {'\u{2190}'} Retour
+              </motion.button>
+              <h2>Carte du parcours</h2>
+              <span className="step-badge">{state.currentIndex + 1}/{STOPS.length}</span>
             </div>
-            <button className="btn btn-primary" onClick={resetGame} style={{ marginTop: '1.5rem' }}>
-              Recommencer {'\u{1F504}'}
-            </button>
-          </div>
-        );
-      })()}
+            <LeafletMap
+              gameState={state}
+              previousScreen={prevScreen}
+              onTryGuess={tryGuess}
+              onShowReveal={(idx) => { setRevealIdx(idx); navigate('reveal'); }}
+              onGoBack={() => navigate(prevScreen as Screen)}
+              onGoToClue={() => navigate('clue')}
+              onStartGame={startGame}
+            />
+            <div className="map-legend">
+              <div className="legend-item"><div className="legend-dot visited" /><span>Decouvert</span></div>
+              <div className="legend-item"><div className="legend-dot locked" /><span>A trouver</span></div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── REVEAL ── */}
+        {screen === 'reveal' && (() => {
+          const stop = STOPS[revealIdx];
+          const isLast = state.currentIndex >= STOPS.length - 1;
+          return (
+            <motion.div
+              key="reveal"
+              id="reveal-screen"
+              className="screen active"
+              {...fadeOnly}
+              transition={{ duration: 0.25, ease: smooth }}
+            >
+              <div className="reveal-image-container" style={{ position: 'relative' }}>
+                <img src={stop.image} alt={stop.name} className="reveal-image" />
+                <motion.div
+                  className="reveal-badge"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.25, ease: smooth }}
+                >
+                  {'\u{2714}'} Decouvert
+                </motion.div>
+              </div>
+              <motion.div
+                className="reveal-body"
+                style={{ paddingTop: `calc(1.5rem + ${topOffset}px)` }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1, duration: 0.3, ease: smooth }}
+              >
+                <span className="reveal-category">{stop.category}</span>
+                <h2>{stop.name}</h2>
+                <p className="reveal-description">{stop.description}</p>
+                <div className="reveal-history">
+                  <h3>{'\u{1F4DC}'} Histoire</h3>
+                  <p>{stop.history}</p>
+                </div>
+                <div className="reveal-actions">
+                  <motion.button className="btn btn-primary" onClick={isLast ? finishGame : nextClue} whileTap={{ scale: 0.97 }}>
+                    {isLast ? <>{"Terminer le parcours"} {'\u{1F389}'}</> : <>{"Indice suivant"} {'\u{2794}'}</>}
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+
+        {/* ── END ── */}
+        {screen === 'end' && (() => {
+          const level = getFinalLevel(total, max);
+          return (
+            <motion.div
+              key="end"
+              id="end-screen"
+              className="screen active"
+              {...fadeSlideUp}
+              transition={{ duration: 0.35, ease: smooth }}
+            >
+              <motion.div
+                className="end-icon"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.15, duration: 0.3, ease: smooth }}
+              >
+                {'\u{1F3C6}'}
+              </motion.div>
+              <h1>Parcours termine !</h1>
+              <p className="subtitle">{"Vous avez explore tous les lieux du domaine de l\u2019Hermitage."}</p>
+              <motion.div
+                className="end-total-score"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.3, ease: smooth }}
+              >
+                <span className="total-pts">{total} / {max} pts</span>
+                <span className="total-max" dangerouslySetInnerHTML={{ __html: renderStars(Math.round(total / max * 3)) }} />
+                <span className={`end-level ${level.cls}`}>{level.label}</span>
+              </motion.div>
+              <div className="end-recap">
+                {order.map((stopIdx: number, i: number) => {
+                  const s = STOPS[stopIdx];
+                  const stopScore = state.scores.find((sc) => sc.stopIndex === stopIdx);
+                  return (
+                    <motion.div
+                      key={stopIdx}
+                      className="end-recap-item"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.25 + i * 0.05, duration: 0.2, ease: smooth }}
+                    >
+                      <span className="emoji">{s.emoji}</span>
+                      <span className="name">{s.name}</span>
+                      {stopScore && (
+                        <span className="score-inline"
+                          dangerouslySetInnerHTML={{
+                            __html: `<span class="stars">${renderStars(stopScore.stars)}</span><span class="pts">${stopScore.points} pts</span>`
+                          }} />
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+              <motion.button className="btn btn-primary" onClick={resetGame} style={{ marginTop: '1.5rem' }} whileTap={{ scale: 0.97 }}>
+                Recommencer {'\u{1F504}'}
+              </motion.button>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* ── ARRIVAL MODAL ── */}
-      {arrivalModal && (
-        <div className="modal-overlay active">
-          <div className="modal">
-            <div className="modal-icon">{'\u{1F389}'}</div>
-            <h3>Vous etes arrive !</h3>
-            <p dangerouslySetInnerHTML={{ __html: arrivalModal.text }} />
-            <button className="btn btn-success" onClick={revealCurrentPoint}>
-              Decouvrir ce lieu {'\u{2794}'}
-            </button>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {arrivalModal && (
+          <motion.div
+            className="modal-overlay active"
+            {...fadeOnly}
+            transition={{ duration: 0.2, ease: snappy }}
+          >
+            <motion.div
+              className="modal"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.25, ease: smooth }}
+            >
+              <div className="modal-icon">{'\u{1F389}'}</div>
+              <h3>Vous etes arrive !</h3>
+              <p dangerouslySetInnerHTML={{ __html: arrivalModal.text }} />
+              <motion.button className="btn btn-success" onClick={revealCurrentPoint} whileTap={{ scale: 0.97 }}>
+                Decouvrir ce lieu {'\u{2794}'}
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── WRONG MODAL ── */}
-      {wrongModal && (
-        <div className="modal-overlay active">
-          <div className="modal modal-wrong">
-            <div className="modal-icon">{'\u{274C}'}</div>
-            <h3>Ce n&apos;est pas le bon lieu !</h3>
-            <p>{wrongModal}</p>
-            <button className="btn btn-outline" onClick={closeWrongModal}>
-              Reessayer sur la carte
-            </button>
-            <div style={{ marginTop: '0.6rem' }}>
-              <button className="btn btn-primary btn-sm" onClick={goToClue}>
-                {'\u{1F50D}'} Revoir l&apos;indice
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {wrongModal && (
+          <motion.div
+            className="modal-overlay active"
+            {...fadeOnly}
+            transition={{ duration: 0.2, ease: snappy }}
+          >
+            <motion.div
+              className="modal modal-wrong"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.25, ease: smooth }}
+            >
+              <div className="modal-icon">{'\u{274C}'}</div>
+              <h3>{"Ce n\u2019est pas le bon lieu !"}</h3>
+              <p>{wrongModal}</p>
+              <motion.button className="btn btn-outline" style={{ border: 'none' }} onClick={closeWrongModal} whileTap={{ scale: 0.97 }}>
+                Reessayer sur la carte
+              </motion.button>
+              <div style={{ marginTop: '0.6rem' }}>
+                <motion.button className="btn btn-primary btn-sm" onClick={goToClue} whileTap={{ scale: 0.97 }}>
+                  {'\u{1F50D}'} {"Revoir l\u2019indice"}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

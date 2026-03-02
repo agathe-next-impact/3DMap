@@ -39,6 +39,8 @@
     display: none;
     min-height: 100dvh;
     flex-direction: column;
+    will-change: transform, opacity;
+    backface-visibility: hidden;
   }
   .screen.active {
     display: flex;
@@ -131,7 +133,7 @@
     font-size: 1rem;
     font-weight: bold;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
     text-decoration: none;
     position: relative;
     z-index: 1;
@@ -207,7 +209,7 @@
     height: 8px;
     border-radius: 50%;
     background: var(--bg-dark);
-    transition: all 0.3s;
+    transition: background 0.3s, transform 0.3s;
   }
   .progress-dot.done {
     background: var(--success);
