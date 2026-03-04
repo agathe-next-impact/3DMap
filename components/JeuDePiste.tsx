@@ -263,7 +263,7 @@ export default function JeuDePiste() {
             transition={{ duration: 0.3, ease: smooth }}
           >
             <div className="welcome-icon">{'\u{1F3F0}'}</div>
-            <h1>Jeu de Piste</h1>
+            <h1> L’HERMITAGE, TOUTE UNE HISTOIRE !</h1>
             <p className="subtitle">
               {"Bienvenue \u00e0 l\u2019Hermitage, un lieu charg\u00e9 d\u2019Histoire(s). Nous vous proposons d\u2019aller \u00e0 la recherche des traces laiss\u00e9es par le temps sur le site\u00a0: autant d\u2019indices pour d\u00e9couvrir l\u2019histoire du domaine et des personnes qui l\u2019ont fa\u00e7onn\u00e9. Votre voyage \u00e0 l\u2019Hermitage commence maintenant\u00a0!"}
             </p>
@@ -294,6 +294,9 @@ export default function JeuDePiste() {
               <motion.button className="btn btn-secondary btn-sm" onClick={() => navigate('map')} whileTap={{ scale: 0.97 }}>
                 {'\u{1F5FA}'} Voir la carte
               </motion.button>
+            </div>
+            <div className="font-black text-xl">
+              Numéro d’urgence : 06.34.50.29.63
             </div>
           </motion.div>
         )}

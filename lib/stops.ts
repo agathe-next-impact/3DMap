@@ -24,7 +24,7 @@ export const STOPS: Stop[] = [
     category: 'Patrimoine',
     categoryIcon: '\u{1F3DB}',
     image: '/images/stops/grande-maison.jpg',
-    clueText: "Votre premier indice se trouve devant la grande maison, amusez-vous bien et soyez vigilant, l’Histoire est pleine de rebondissements.",
+    clueText: "Votre premier indice se trouve devant la grande maison, amusez-vous bien et soyez vigilant, l’Histoire est pleine de rebondissements.Pour trouver vos indices, cherchez les QR-codes, scannez-les, entrez le numéro de votre équipe et mettez en route vos jambes et vos méninges. Échangez les rôles dans l’équipe, tout le monde peut scanner et réfléchir ! ",
     clueHint: "Continuez vers le nord-est depuis les ateliers. C'est le plus grand batiment du domaine.",
     description: "La Grande Maison est le batiment principal de l'Hermitage. Cette imposante demeure a colombages de trois etages temoigne de l'architecture traditionnelle picarde. Son pignon orne de colombages en croix de Saint-Andre est un element remarquable du patrimoine local.",
     history: "Construite au XVIIe siecle, la Grande Maison a ete le centre nevralgique du domaine pendant plus de trois cents ans. Elle a accueilli des generations de familles et a survecu a la Revolution ainsi qu'aux deux guerres mondiales. Les colombages d'origine sont encore visibles sur la facade nord.",
