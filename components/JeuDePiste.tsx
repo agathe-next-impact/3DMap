@@ -27,6 +27,7 @@ export default function JeuDePiste() {
   const [prevScreen, setPrevScreen] = useState<string>('clue');
   const [arrivalModal, setArrivalModal] = useState<{ text: string } | null>(null);
   const [wrongModal, setWrongModal] = useState<string | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
   const [revealIdx, setRevealIdx] = useState(0);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBar, setShowInstallBar] = useState(false);
@@ -85,6 +86,17 @@ export default function JeuDePiste() {
       if (current !== 'map') setPrevScreen(current);
       return to;
     });
+  }, []);
+
+  const navigateAnimated = useCallback((to: Screen) => {
+    setIsExiting(true);
+    setTimeout(() => {
+      setIsExiting(false);
+      setScreen((current) => {
+        if (current !== 'map') setPrevScreen(current);
+        return to;
+      });
+    }, 300);
   }, []);
 
   // Loading
@@ -152,7 +164,7 @@ export default function JeuDePiste() {
         wrongGuesses: [],
         attempts: 0,
       }));
-      navigate('clue');
+      navigateAnimated('clue');
     } else {
       finishGame();
     }
@@ -160,7 +172,7 @@ export default function JeuDePiste() {
 
   function finishGame() {
     update((s) => ({ ...s, completed: true }));
-    navigate('end');
+    navigateAnimated('end');
   }
 
   function resetGame() {
@@ -225,7 +237,7 @@ export default function JeuDePiste() {
 
       {/* ── WELCOME ── */}
       {screen === 'welcome' && (
-        <div id="welcome" className="screen active">
+        <div id="welcome" className={`screen active${isExiting ? ' exiting' : ''}`}>
           <div className="welcome-icon">{'\u{1F3F0}'}</div>
           <h1>Jeu de Piste</h1>
           <p className="subtitle">
@@ -247,7 +259,7 @@ Votre voyage à l’Hermitage commence maintenant !
             Commencer l&apos;aventure {'\u{2794}'}
           </button>
           <div style={{ marginTop: '1rem' }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => navigate('map')}>
+            <button className="btn btn-secondary btn-sm" onClick={() => navigateAnimated('map')}>
               {'\u{1F5FA}'} Voir la carte
             </button>
           </div>
@@ -256,7 +268,7 @@ Votre voyage à l’Hermitage commence maintenant !
 
       {/* ── CLUE ── */}
       {screen === 'clue' && (
-        <div id="clue-screen" className="screen active">
+        <div id="clue-screen" className={`screen active${isExiting ? ' exiting' : ''}`}>
           <div className="clue-header" style={{ top: topOffset }}>
             <span className="step-badge">Etape {state.currentIndex + 1}/{STOPS.length}</span>
             <div className="progress-dots">
@@ -267,7 +279,7 @@ Votre voyage à l’Hermitage commence maintenant !
                 return <div key={step} className={cls} />;
               })}
             </div>
-            <button className="btn btn-outline btn-sm" onClick={() => navigate('map')}>
+            <button className="btn btn-outline btn-sm" onClick={() => navigateAnimated('map')}>
               {'\u{1F5FA}'} Carte
             </button>
           </div>
@@ -286,7 +298,7 @@ Votre voyage à l’Hermitage commence maintenant !
               </div>
             )}
             <div className="clue-actions">
-              <button className="btn btn-primary" onClick={() => navigate('map')}>
+              <button className="btn btn-primary" onClick={() => navigateAnimated('map')}>
                 {'\u{1F5FA}'} Voir la carte
               </button>
             </div>
@@ -296,9 +308,9 @@ Votre voyage à l’Hermitage commence maintenant !
 
       {/* ── MAP ── */}
       {screen === 'map' && (
-        <div id="map-screen" className="screen active">
+        <div id="map-screen" className={`screen active${isExiting ? ' exiting' : ''}`}>
           <div className="map-header" style={{ marginTop: topOffset }}>
-            <button className="btn btn-outline btn-sm" onClick={() => navigate(prevScreen as Screen)}>
+            <button className="btn btn-outline btn-sm" onClick={() => navigateAnimated(prevScreen as Screen)}>
               {'\u{2190}'} Retour
             </button>
             <h2>Carte du parcours</h2>
@@ -308,9 +320,9 @@ Votre voyage à l’Hermitage commence maintenant !
             gameState={state}
             previousScreen={prevScreen}
             onTryGuess={tryGuess}
-            onShowReveal={(idx) => { setRevealIdx(idx); navigate('reveal'); }}
-            onGoBack={() => navigate(prevScreen as Screen)}
-            onGoToClue={() => navigate('clue')}
+            onShowReveal={(idx) => { setRevealIdx(idx); navigateAnimated('reveal'); }}
+            onGoBack={() => navigateAnimated(prevScreen as Screen)}
+            onGoToClue={() => navigateAnimated('clue')}
             onStartGame={startGame}
           />
           <div className="map-legend">
@@ -325,7 +337,7 @@ Votre voyage à l’Hermitage commence maintenant !
         const stop = STOPS[revealIdx];
         const isLast = state.currentIndex >= STOPS.length - 1;
         return (
-          <div id="reveal-screen" className="screen active">
+          <div id="reveal-screen" className={`screen active${isExiting ? ' exiting' : ''}`}>
             <div className="reveal-image-container" style={{ position: 'relative' }}>
               <img src={stop.image} alt={stop.name} className="reveal-image" />
               <div className="reveal-badge">{'\u{2714}'} Decouvert</div>
@@ -352,7 +364,7 @@ Votre voyage à l’Hermitage commence maintenant !
       {screen === 'end' && (() => {
         const level = getFinalLevel(total, max);
         return (
-          <div id="end-screen" className="screen active">
+          <div id="end-screen" className={`screen active${isExiting ? ' exiting' : ''}`}>
             <div className="end-icon">{'\u{1F3C6}'}</div>
             <h1>Parcours termine !</h1>
             <p className="subtitle">Vous avez explore tous les lieux du domaine de l&apos;Hermitage.</p>
