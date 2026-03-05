@@ -121,6 +121,68 @@
     letter-spacing: 0.1em;
   }
 
+  /* ── Instructions Screen ── */
+  #instructions {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    background: white;
+    color: var(--brand-dark);
+    position: relative;
+    overflow: hidden;
+  }
+  #instructions::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--brand-teal) 0%, var(--brand-green) 100%);
+    opacity: 0.07;
+    z-index: 0;
+  }
+  #instructions > * {
+    position: relative;
+    z-index: 2;
+  }
+  .instructions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 1.5rem 0;
+    text-align: left;
+    max-width: 400px;
+  }
+  .instruction-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .instruction-num {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+  .instruction-item p {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    padding-top: 0.2rem;
+  }
+  .instructions-tip {
+    background: var(--brand-teal);
+    color: white;
+    padding: 0.8rem 1.2rem;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    max-width: 400px;
+    text-align: left;
+  }
+
   /* ── Buttons ── */
   .btn {
     display: inline-flex;

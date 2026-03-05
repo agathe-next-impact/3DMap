@@ -20,7 +20,7 @@ import {
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), { ssr: false });
 
-type Screen = 'welcome' | 'clue' | 'map' | 'reveal' | 'end';
+type Screen = 'welcome' | 'instructions' | 'clue' | 'map' | 'reveal' | 'end';
 
 // Smooth cubic-bezier for natural motion
 const smooth = [0.25, 0.1, 0.25, 1] as const;
@@ -46,6 +46,7 @@ export default function JeuDePiste() {
   const [arrivalModal, setArrivalModal] = useState<{ text: string } | null>(null);
   const [wrongModal, setWrongModal] = useState<string | null>(null);
   const [revealIdx, setRevealIdx] = useState(0);
+  const [isReview, setIsReview] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBar, setShowInstallBar] = useState(false);
@@ -132,12 +133,31 @@ export default function JeuDePiste() {
 
   // --- Handlers ---
   function startGame() {
+    const firstIdx = STOPS.findIndex((s) => s.id === 'grande-maison');
+    const lastIdx = STOPS.findIndex((s) => s.id === 'mere-mitage');
+    const middle = STOPS.map((_, i) => i).filter((i) => i !== firstIdx && i !== lastIdx);
+    const order = [firstIdx, ...shuffleArray(middle), lastIdx];
     update((s) => ({
       ...s,
       started: true,
-      shuffleOrder: shuffleArray(STOPS.map((_, i) => i)),
+      shuffleOrder: order,
     }));
-    navigate('clue');
+    navigate('instructions');
+  }
+
+  function startFirstStop() {
+    // Grande maison: no clue/guessing, auto-validate and show reveal directly
+    const stopIdx = state.shuffleOrder ? state.shuffleOrder[state.currentIndex] : state.currentIndex;
+    const score = computeScore(1);
+    update((s) => ({
+      ...s,
+      attempts: 1,
+      visitedIndices: [...s.visitedIndices, stopIdx],
+      scores: [...s.scores, { stopIndex: stopIdx, attempts: 1, points: score.points, stars: score.stars }],
+    }));
+    setIsReview(false);
+    setRevealIdx(stopIdx);
+    navigate('reveal');
   }
 
   function tryGuess(idx: number) {
@@ -161,14 +181,14 @@ export default function JeuDePiste() {
         attempts: newAttempts,
         wrongGuesses: [...s.wrongGuesses, idx],
       }));
-      const wrongStop = STOPS[idx];
-      setWrongModal(`"${wrongStop.name}" ne correspond pas a l'indice. Relisez bien et essayez un autre point !`);
+      setWrongModal("Ce n'est pas le bon lieu ! Relisez bien l'indice et essayez un autre point !");
     }
     navigate('map');
   }
 
   function revealCurrentPoint() {
     setArrivalModal(null);
+    setIsReview(false);
     setRevealIdx(currentStopIdx);
     navigate('reveal');
   }
@@ -295,9 +315,40 @@ export default function JeuDePiste() {
                 {'\u{1F5FA}'} Voir la carte
               </motion.button>
             </div>
-            <div className="font-black text-xl">
-              Numéro d’urgence : 06.34.50.29.63
+          </motion.div>
+        )}
+
+        {/* ── INSTRUCTIONS ── */}
+        {screen === 'instructions' && (
+          <motion.div
+            key="instructions"
+            id="instructions"
+            className="screen active"
+            {...fadeSlideUp}
+            transition={{ duration: 0.3, ease: smooth }}
+          >
+            <div className="welcome-icon">{'\u{1F4CB}'}</div>
+            <h1>Instructions</h1>
+            <div className="instructions-list">
+              <div className="instruction-item">
+                <span className="instruction-num">{'\u{1F3E0}'}</span>
+                <p>Votre premier indice se trouve devant la <strong>grande maison</strong>, amusez-vous bien et soyez vigilant, l{'\u2019'}Histoire est pleine de rebondissements.</p>
+              </div>
+              <div className="instruction-item">
+                <span className="instruction-num">{'\u{1F4F1}'}</span>
+                <p>Pour trouver vos indices, cherchez les <strong>QR-codes</strong>, scannez-les, entrez le num{'\u00e9'}ro de votre {'\u00e9'}quipe et mettez en route vos jambes et vos m{'\u00e9'}ninges.</p>
+              </div>
+              <div className="instruction-item">
+                <span className="instruction-num">{'\u{1F91D}'}</span>
+                <p><strong>{'\u00C9'}changez les r{'\u00f4'}les</strong> dans l{'\u2019'}{'\u00e9'}quipe, tout le monde peut scanner et r{'\u00e9'}fl{'\u00e9'}chir{'\u00a0'}!</p>
+              </div>
             </div>
+            <div className="instructions-tip">
+              <strong>{'\u{1F4DE}'} Num{'\u00e9'}ro d{'\u2019'}urgence</strong> : 06.34.50.29.63
+            </div>
+            <motion.button className="btn btn-primary" onClick={startFirstStop} whileTap={{ scale: 0.97 }}>
+              {"C\u2019est parti !"} {'\u{2794}'}
+            </motion.button>
           </motion.div>
         )}
 
@@ -397,7 +448,7 @@ export default function JeuDePiste() {
               gameState={state}
               previousScreen={prevScreen}
               onTryGuess={tryGuess}
-              onShowReveal={(idx) => { setRevealIdx(idx); navigate('reveal'); }}
+              onShowReveal={(idx) => { setIsReview(true); setRevealIdx(idx); navigate('reveal'); }}
               onGoBack={() => navigate(prevScreen as Screen)}
               onGoToClue={() => navigate('clue')}
               onStartGame={startGame}
@@ -442,14 +493,27 @@ export default function JeuDePiste() {
                 <span className="reveal-category">{stop.category}</span>
                 <h2>{stop.name}</h2>
                 <p className="reveal-description">{stop.description}</p>
-                <div className="reveal-history">
-                  <h3>{'\u{1F4DC}'} Histoire</h3>
-                  <p>{stop.history}</p>
-                </div>
+                {stop.history && (
+                  <div className="reveal-history">
+                    <h3>{'\u{1F4DC}'} Bonus</h3>
+                    <p>{stop.history}</p>
+                  </div>
+                )}
                 <div className="reveal-actions">
-                  <motion.button className="btn btn-primary" onClick={isLast ? finishGame : nextClue} whileTap={{ scale: 0.97 }}>
-                    {isLast ? <>{"Terminer le parcours"} {'\u{1F389}'}</> : <>{"Indice suivant"} {'\u{2794}'}</>}
-                  </motion.button>
+                  {isReview ? (
+                    <>
+                      <motion.button className="btn btn-primary" onClick={() => navigate('clue')} whileTap={{ scale: 0.97 }}>
+                        {'\u{1F50D}'} {"Retour \u00e0 l\u2019indice en cours"}
+                      </motion.button>
+                      <motion.button className="btn btn-outline btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => navigate('map')} whileTap={{ scale: 0.97 }}>
+                        {'\u{1F5FA}'} Retour {'\u00e0'} la carte
+                      </motion.button>
+                    </>
+                  ) : (
+                    <motion.button className="btn btn-primary" onClick={isLast ? finishGame : nextClue} whileTap={{ scale: 0.97 }}>
+                      {isLast ? <>{"Terminer le parcours"} {'\u{1F389}'}</> : <>{"Indice suivant"} {'\u{2794}'}</>}
+                    </motion.button>
+                  )}
                 </div>
               </motion.div>
             </motion.div>
