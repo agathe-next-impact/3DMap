@@ -284,72 +284,6 @@ export default function JeuDePiste() {
         </div>
       )}
 
-<<<<<<< HEAD
-      {/* ── WELCOME ── */}
-      {screen === 'welcome' && (
-        <div id="welcome" className={`screen active${isExiting ? ' exiting' : ''}`}>
-          <div className="welcome-icon">{'\u{1F3F0}'}</div>
-          <h1>Jeu de Piste</h1>
-          <p className="subtitle">
-            Bienvenue à l’Hermitage, un lieu chargé d’Histoire(s).
-Nous vous proposons d’aller à la recherche des traces laissées par le temps sur le site : autant d’indices pour découvrir l’histoire du domaine et des personnes qui l’ont façonné.
-Votre voyage à l’Hermitage commence maintenant !
-          </p>
-          <div className="welcome-stats">
-            <div className="welcome-stat">
-              <span className="num">{STOPS.length}</span>
-              <span className="label">Etapes</span>
-            </div>
-            <div className="welcome-stat">
-              <span className="num">~2 km</span>
-              <span className="label">Parcours</span>
-            </div>
-          </div>
-          <button className="btn btn-primary" onClick={startGame}>
-            Commencer l&apos;aventure {'\u{2794}'}
-          </button>
-          <div style={{ marginTop: '1rem' }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => navigateAnimated('map')}>
-              {'\u{1F5FA}'} Voir la carte
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── CLUE ── */}
-      {screen === 'clue' && (
-        <div id="clue-screen" className={`screen active${isExiting ? ' exiting' : ''}`}>
-          <div className="clue-header" style={{ top: topOffset }}>
-            <span className="step-badge">Etape {state.currentIndex + 1}/{STOPS.length}</span>
-            <div className="progress-dots">
-              {order.map((stopIdx, step) => {
-                let cls = 'progress-dot';
-                if (state.visitedIndices.includes(stopIdx)) cls += ' done';
-                else if (step === state.currentIndex) cls += ' current';
-                return <div key={step} className={cls} />;
-              })}
-            </div>
-            <button className="btn btn-outline btn-sm" onClick={() => navigateAnimated('map')}>
-              {'\u{1F5FA}'} Carte
-            </button>
-          </div>
-          <div className="clue-image-container">
-            <img src={currentStopData.image} alt="Image indice - lieu a decouvrir" className="clue-image blurred" />
-            <div className="clue-image-overlay">
-            </div>
-          </div>
-          <div className="clue-body">
-            <h2 className="clue-title">{clueTitle}</h2>
-            <div className="clue-text"><p>{currentStopData.clueText}</p></div>
-            <p className="clue-hint">{currentStopData.clueHint}</p>
-            {state.attempts > 0 && (
-              <div className="attempts-counter">
-                {'\u{1F3AF}'} Tentatives : <strong>{state.attempts}</strong>
-              </div>
-            )}
-            <div className="clue-actions">
-              <button className="btn btn-primary" onClick={() => navigateAnimated('map')}>
-=======
       <AnimatePresence mode="wait">
         {/* ── WELCOME ── */}
         {screen === 'welcome' && (
@@ -390,58 +324,12 @@ Votre voyage à l’Hermitage commence maintenant !
             </motion.button>
             <div style={{ marginTop: '1rem' }}>
               <motion.button className="btn btn-secondary btn-sm" onClick={() => navigate('map')} whileTap={{ scale: 0.97 }}>
->>>>>>> 2b1e6f6614fe6a67fab5708a5b5b687359e1d341
                 {'\u{1F5FA}'} Voir la carte
               </motion.button>
             </div>
           </motion.div>
         )}
 
-<<<<<<< HEAD
-      {/* ── MAP ── */}
-      {screen === 'map' && (
-        <div id="map-screen" className={`screen active${isExiting ? ' exiting' : ''}`}>
-          <div className="map-header" style={{ marginTop: topOffset }}>
-            <button className="btn btn-outline btn-sm" onClick={() => navigateAnimated(prevScreen as Screen)}>
-              {'\u{2190}'} Retour
-            </button>
-            <h2>Carte du parcours</h2>
-            <span className="step-badge">{state.currentIndex + 1}/{STOPS.length}</span>
-          </div>
-          <LeafletMap
-            gameState={state}
-            previousScreen={prevScreen}
-            onTryGuess={tryGuess}
-            onShowReveal={(idx) => { setRevealIdx(idx); navigateAnimated('reveal'); }}
-            onGoBack={() => navigateAnimated(prevScreen as Screen)}
-            onGoToClue={() => navigateAnimated('clue')}
-            onStartGame={startGame}
-          />
-          <div className="map-legend">
-            <div className="legend-item"><div className="legend-dot visited" /><span>Decouvert</span></div>
-            <div className="legend-item"><div className="legend-dot locked" /><span>A trouver</span></div>
-          </div>
-        </div>
-      )}
-
-      {/* ── REVEAL ── */}
-      {screen === 'reveal' && (() => {
-        const stop = STOPS[revealIdx];
-        const isLast = state.currentIndex >= STOPS.length - 1;
-        return (
-          <div id="reveal-screen" className={`screen active${isExiting ? ' exiting' : ''}`}>
-            <div className="reveal-image-container" style={{ position: 'relative' }}>
-              <img src={stop.image} alt={stop.name} className="reveal-image" />
-              <div className="reveal-badge">{'\u{2714}'} Decouvert</div>
-            </div>
-            <div className="reveal-body" style={{ paddingTop: `calc(1.5rem + ${topOffset}px)` }}>
-              <span className="reveal-category">{stop.category}</span>
-              <h2>{stop.name}</h2>
-              <p className="reveal-description">{stop.description}</p>
-              <div className="reveal-history">
-                <h3>{'\u{1F4DC}'} Histoire</h3>
-                <p>{stop.history}</p>
-=======
         {/* ── INSTRUCTIONS ── */}
         {screen === 'instructions' && (
           <motion.div
@@ -457,7 +345,6 @@ Votre voyage à l’Hermitage commence maintenant !
               <div className="instruction-item">
                 <span className="instruction-num">{'\u{1F3E0}'}</span>
                 <p>Votre premier indice se trouve devant la <strong>grande maison</strong>, amusez-vous bien et soyez vigilant, l{'\u2019'}Histoire est pleine de rebondissements.</p>
->>>>>>> 2b1e6f6614fe6a67fab5708a5b5b687359e1d341
               </div>
               <div className="instruction-item">
                 <span className="instruction-num">{'\u{1F4F1}'}</span>
@@ -468,27 +355,8 @@ Votre voyage à l’Hermitage commence maintenant !
                 <p><strong>{'\u00C9'}changez les r{'\u00f4'}les</strong> dans l{'\u2019'}{'\u00e9'}quipe, tout le monde peut scanner et r{'\u00e9'}fl{'\u00e9'}chir{'\u00a0'}!</p>
               </div>
             </div>
-<<<<<<< HEAD
-          </div>
-        );
-      })()}
-
-      {/* ── END ── */}
-      {screen === 'end' && (() => {
-        const level = getFinalLevel(total, max);
-        return (
-          <div id="end-screen" className={`screen active${isExiting ? ' exiting' : ''}`}>
-            <div className="end-icon">{'\u{1F3C6}'}</div>
-            <h1>Parcours termine !</h1>
-            <p className="subtitle">Vous avez explore tous les lieux du domaine de l&apos;Hermitage.</p>
-            <div className="end-total-score">
-              <span className="total-pts">{total} / {max} pts</span>
-              <span className="total-max" dangerouslySetInnerHTML={{ __html: renderStars(Math.round(total / max * 3)) }} />
-              <span className={`end-level ${level.cls}`}>{level.label}</span>
-=======
             <div className="instructions-tip">
               <strong>{'\u{1F4DE}'} Num{'\u00e9'}ro d{'\u2019'}urgence</strong> : 06.34.50.29.63
->>>>>>> 2b1e6f6614fe6a67fab5708a5b5b687359e1d341
             </div>
             <motion.button className="btn btn-primary" onClick={startFirstStop} whileTap={{ scale: 0.97 }}>
               {"C\u2019est parti !"} {'\u{2794}'}
