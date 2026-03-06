@@ -503,11 +503,13 @@
   /* ── End Screen ── */
   #end-screen {
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     text-align: center;
     padding: 2rem;
+    padding-top: 3rem;
     background: #e75754;
     color: white;
+    overflow-y: auto;
   }
   .end-icon {
     font-size: 5rem;
