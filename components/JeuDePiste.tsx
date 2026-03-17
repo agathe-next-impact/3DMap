@@ -116,6 +116,7 @@ export default function JeuDePiste() {
       if (current !== 'map') setPrevScreen(current);
       return to;
     });
+    window.scrollTo(0, 0);
   }, []);
 
   const navigateAnimated = useCallback((to: Screen) => {
@@ -339,7 +340,7 @@ export default function JeuDePiste() {
             {...fadeSlideUp}
             transition={{ duration: 0.3, ease: smooth }}
           >
-            <div className="welcome-icon">{'\u{1F4CB}'}</div>
+            <div className="welcome-icon"></div>
             <h1>Instructions</h1>
             <div className="instructions-list">
               <div className="instruction-item">
