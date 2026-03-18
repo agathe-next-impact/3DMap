@@ -45,7 +45,6 @@ export default function JeuDePiste() {
   const [prevScreen, setPrevScreen] = useState<string>('clue');
   const [arrivalModal, setArrivalModal] = useState<{ text: string } | null>(null);
   const [wrongModal, setWrongModal] = useState<string | null>(null);
-  const [isExiting, setIsExiting] = useState(false);
   const [revealIdx, setRevealIdx] = useState(0);
   const [isReview, setIsReview] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -119,16 +118,6 @@ export default function JeuDePiste() {
     window.scrollTo(0, 0);
   }, []);
 
-  const navigateAnimated = useCallback((to: Screen) => {
-    setIsExiting(true);
-    setTimeout(() => {
-      setIsExiting(false);
-      setScreen((current) => {
-        if (current !== 'map') setPrevScreen(current);
-        return to;
-      });
-    }, 300);
-  }, []);
 
   // Loading
   if (!gs) return null;
@@ -214,7 +203,7 @@ export default function JeuDePiste() {
         wrongGuesses: [],
         attempts: 0,
       }));
-      navigateAnimated('clue');
+      navigate('clue');
     } else {
       finishGame();
     }
@@ -222,7 +211,7 @@ export default function JeuDePiste() {
 
   function finishGame() {
     update((s) => ({ ...s, completed: true }));
-    navigateAnimated('end');
+    navigate('end');
   }
 
   function resetGame() {

@@ -203,7 +203,7 @@ export const STOPS: Stop[] = [
     emoji: '\u{1F331}',
     category: 'Nature',
     categoryIcon: '\u{1F33F}',
-    image: '/images/stops/planteurs.jpg',
+    image: '/images/stops/planteur.jpg',
     clueText: "Je ne suis pas une girole mais j'ai poussé comme un champignon au plateau. J'accueille des espèces endémiques et sauvages pour remettre de la vie dans les grands champs de Picardie. ",
     clueHint: "",
     description: "Planteurs c\'est qui, c’est quoi ? C\'est Marius et Palmyre. C\'est une pépinière de plan locaux, issu de graines récoltées en milieu sauvage, pour alimenter des chantiers de plantations sur le territoire. Pourquoi faire ? Pour remettre des haies vivantes dans nos campagnes pour la richesse de notre biodiversité 🌱 C\'est de la découverte et du partage pour prendre le temps de découvrir ( ou re-découvrir) la flore sauvage qui nous entoure !",
