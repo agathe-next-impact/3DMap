@@ -48,8 +48,8 @@ export const STOPS: Stop[] = [
   {
     id: 'mere-mitage',
     name: 'La Mere Mitage',
-    lat: 49.43815306017622,
-    lng: 3.129793240230776,
+    lat: 49.43798999070889,
+    lng: 3.129692923021836,
     emoji: '\u{1F3E1}',
     category: 'Patrimoine',
     categoryIcon: '\u{1F3DB}',
