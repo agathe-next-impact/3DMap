@@ -31,7 +31,7 @@ export const STOPS: Stop[] = [
     svgColors: { sky: '#87CEEB', ground: '#5dbd3a', accent: '#e83030' }
   },
   {
-    id: 'tipis',
+    id: 'chalets',
     name: 'Les Chalets',
     lat: 49.43833239424977,
     lng: 3.1277042008872646,
@@ -86,7 +86,7 @@ export const STOPS: Stop[] = [
     image: '/images/stops/guinguette.jpg',
     clueText: "C'est une place de village au cœur du bois: on y chante au coin du feu sous les guirlandes.",
     clueHint: "",
-    description: "",
+    description: "La guinguette c'est notre petit coin de paradis, de lien, et de convivialité. Concert, spectacle, Marché de Noël, soirée autour du feu. C'est la place à l'orée du bois qui met de la chaleur dans nos coeur. Le bar a été rénové lors d'un chantier participatif avec Concordia. Un commun joyeux sur le tiers-lieu.",
     history: "",
     svgColors: { sky: '#FFD700', ground: '#FF6347', accent: '#20B2AA' }
   },
@@ -209,5 +209,20 @@ export const STOPS: Stop[] = [
     description: "Planteurs c\'est qui, c’est quoi ? C\'est Marius et Palmyre. C\'est une pépinière de plan locaux, issu de graines récoltées en milieu sauvage, pour alimenter des chantiers de plantations sur le territoire. Pourquoi faire ? Pour remettre des haies vivantes dans nos campagnes pour la richesse de notre biodiversité 🌱 C\'est de la découverte et du partage pour prendre le temps de découvrir ( ou re-découvrir) la flore sauvage qui nous entoure !",
     history: "",
     svgColors: { sky: '#87CEEB', ground: '#228B22', accent: '#FFD700' }
+  },
+  {
+    id: 'tipis',
+    name: "Les Tipis",
+    lat: 49.438225363320925,
+    lng: 3.127886805690663,
+    emoji: '\u{1F6A7}',
+    category: 'Insolite',
+    categoryIcon: '\u{1F3D5}',
+    image: '/images/stops/tipis.jpg',
+    clueText: "Pointue et tourné vers le ciel nous poussons l'été en forme de demi-lune.",
+    clueHint: "Nous accueillons des coeurs hardis pour une nuit insolite ;-) ",
+    description: "",
+    history: "",
+    svgColors: { sky: '#F0E68C', ground: '#6B8E23', accent: '#DEB887' }
   }
 ];
