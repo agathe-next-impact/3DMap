@@ -221,7 +221,7 @@ export const STOPS: Stop[] = [
     image: '/images/stops/tipis.jpg',
     clueText: "Pointue et tourné vers le ciel nous poussons l'été en forme de demi-lune.",
     clueHint: "Nous accueillons des coeurs hardis pour une nuit insolite ;-) ",
-    description: "",
+    description: "Les tipis sont nos logements insolites que l'on monte à la belle saison pour nous permettre d'augmenter notre capicité d'accueil :-) C'est notre petit village d'indien à l'orée du bois, pour des nuits pas comme les autres que l'on peut raconter quand on revient de notre beau séjour à l'Hermitage :-) ",
     history: "",
     svgColors: { sky: '#F0E68C', ground: '#6B8E23', accent: '#DEB887' }
   }
