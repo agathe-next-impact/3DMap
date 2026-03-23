@@ -64,12 +64,29 @@ export default function JeuDePiste() {
   // Load state on mount
   useEffect(() => {
     const state = loadState();
-    setGs(state);
     if (state.completed) {
+      setGs(state);
       setScreen('end');
     } else if (state.started) {
+      // If the current stop was already discovered (user left during reveal),
+      // auto-advance to the next unvisited stop
+      const order = state.shuffleOrder || STOPS.map((_, i) => i);
+      const currentStopIdx = order[state.currentIndex];
+      if (state.visitedIndices.includes(currentStopIdx) && state.currentIndex < STOPS.length - 1) {
+        const advanced = {
+          ...state,
+          currentIndex: state.currentIndex + 1,
+          wrongGuesses: [],
+          attempts: 0,
+        };
+        saveState(advanced);
+        setGs(advanced);
+      } else {
+        setGs(state);
+      }
       setScreen('clue');
     } else {
+      setGs(state);
       setScreen('welcome');
     }
     // Check install dismiss
