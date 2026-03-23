@@ -93,8 +93,8 @@ export const STOPS: Stop[] = [
   {
     id: 'guérite',
     name: 'La Guérite',
-    lat: 49.43766357011599,
-    lng: 3.1263932221156843,
+    lat: 49.43734746489387,
+    lng: 3.1266349460333265,
     emoji: '\u{1F6A7}',
     category: 'Histoire',
     categoryIcon: '\u{1F3DE}',
@@ -138,8 +138,8 @@ export const STOPS: Stop[] = [
   {
     id: "accident",
     name: "L'Accident",
-    lat: 49.43682059613619,
-    lng: 3.1275656421554165,
+    lat: 49.437371577630145,
+    lng: 3.1287658735904955,
     emoji: '\u{1F4A5}',
     category: 'Histoire',
     categoryIcon: '\u{1F3DE}',
