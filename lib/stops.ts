@@ -98,7 +98,7 @@ export const STOPS: Stop[] = [
     emoji: '\u{1F6A7}',
     category: 'Histoire',
     categoryIcon: '\u{1F3DE}',
-    image: '/images/stops/guerite.jpg',
+    image: '/images/stops/guerite.png',
     clueText: "Mon 1er est un endroit d'une rivière que l'on peut traverser à pied. Mon 2nd est synonyme de cérémonie. Mon tout était un lieu de surveillance pendant la première guerre mondiale. ",
     clueHint: "Depuis la guinguette, dirigez-vous vers l'est.",
     description: "Ici la Première Guerre mondiale a fait rage. Presque tous les chemins du bois adoptent le tracé de tranchées.",
