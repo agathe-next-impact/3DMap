@@ -338,7 +338,7 @@ export default function JeuDePiste() {
               </div>
               <div className="instruction-item">
                 <span className="instruction-num">{'\u{1F4F1}'}</span>
-                <p>Pour trouver vos indices, cherchez les <strong>QR-codes</strong>, scannez-les, entrez le num{'\u00e9'}ro de votre {'\u00e9'}quipe et mettez en route vos jambes et vos m{'\u00e9'}ninges.</p>
+                <p>Pour trouver vos indices , lisez bien , réfléchissez et trouvez sur la carte ou l’indice vous emmène . Cliquez sur le bon point sur la carte , Si c’est bon ? en route !Sinon try again 🙃🥳</p>
               </div>
               <div className="instruction-item">
                 <span className="instruction-num">{'\u{1F91D}'}</span>
