@@ -545,6 +545,7 @@ export default function JeuDePiste() {
             ? (state.completedAt - state.startedAt) / 1000
             : 0;
           const speedBonus = computeSpeedBonus(pathDist, durationSec);
+          const speedKmh = durationSec > 0 ? (pathDist / 1000) / (durationSec / 3600) : 0;
           const totalWithBonus = total + speedBonus;
           const level = getFinalLevel(totalWithBonus, max);
           return (
@@ -590,6 +591,11 @@ export default function JeuDePiste() {
                   <span className="end-stat-icon">{'\u{1F6B6}'}</span>
                   <span className="end-stat-label">Distance</span>
                   <span className="end-stat-value">{pathDist >= 1000 ? `${(pathDist / 1000).toFixed(1)} km` : `${Math.round(pathDist)} m`}</span>
+                </div>
+                <div className="end-stat-row">
+                  <span className="end-stat-icon">{'\u{1F3CE}\uFE0F'}</span>
+                  <span className="end-stat-label">Vitesse</span>
+                  <span className="end-stat-value">{speedKmh > 0 ? `${speedKmh.toFixed(1)} km/h` : '--'}</span>
                 </div>
                 <div className="end-stat-row">
                   <span className="end-stat-icon">{'\u{26A1}'}</span>

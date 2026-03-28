@@ -136,12 +136,12 @@ export function formatDuration(seconds: number): string {
   return `${s}s`;
 }
 
-/** Speed bonus: based on average speed (km/h). Faster = more bonus, capped at 150 pts */
+/** Speed bonus: based on average speed (km/h). 4 km/h = max bonus (500 pts), scales linearly */
 export function computeSpeedBonus(distanceMeters: number, durationSeconds: number): number {
   if (durationSeconds <= 0 || distanceMeters <= 0) return 0;
   const speedKmh = (distanceMeters / 1000) / (durationSeconds / 3600);
-  // Target ~3 km/h walking speed = 200 pts, scale linearly, cap at 500
-  const bonus = Math.round(speedKmh * 66);
+  // 4 km/h = 500 pts (max), scale linearly below
+  const bonus = Math.round(speedKmh * 125);
   return Math.min(Math.max(bonus, 20), 500);
 }
 
