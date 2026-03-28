@@ -115,7 +115,7 @@ export default function LeafletMap({
       const isWrongGuess = gameState.wrongGuesses.includes(i);
 
       const markerClass = isVisited ? 'marker-visited' : isWrongGuess ? 'marker-wrong-guess' : 'marker-locked';
-      const markerContent = isVisited ? '&#x2714;' : isWrongGuess ? '&#x2716;' : '&#x1F512;';
+      const markerContent = stop.emoji;
 
       const icon = L.divIcon({
         className: '',
@@ -175,7 +175,7 @@ export default function LeafletMap({
     // Polyline
     if (visitedCoords.length > 1) {
       const polyline = L.polyline(visitedCoords, {
-        color: '#56939f',
+        color: 'var(--brand-green)',
         weight: 3,
         opacity: 0.6,
         dashArray: '8, 8',

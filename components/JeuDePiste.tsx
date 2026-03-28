@@ -16,6 +16,9 @@ import {
   getFinalLevel,
   renderStars,
   SCORE_LEVELS,
+  getPathDistance,
+  formatDuration,
+  computeSpeedBonus,
 } from '@/lib/game-state';
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), { ssr: false });
@@ -160,6 +163,7 @@ export default function JeuDePiste() {
       ...s,
       started: true,
       shuffleOrder: order,
+      startedAt: Date.now(),
     }));
     navigate('instructions');
   }
@@ -227,7 +231,7 @@ export default function JeuDePiste() {
   }
 
   function finishGame() {
-    update((s) => ({ ...s, completed: true }));
+    update((s) => ({ ...s, completed: true, completedAt: Date.now() }));
     navigate('end');
   }
 
@@ -329,11 +333,6 @@ export default function JeuDePiste() {
             <motion.button className="btn btn-primary" onClick={startGame} whileTap={{ scale: 0.97 }}>
               {"Commencer l\u2019aventure"} {'\u{2794}'}
             </motion.button>
-            <div style={{ marginTop: '1rem' }}>
-              <motion.button className="btn btn-secondary btn-sm" onClick={() => navigate('map')} whileTap={{ scale: 0.97 }}>
-                {'\u{1F5FA}'} Voir la carte
-              </motion.button>
-            </div>
           </motion.div>
         )}
 
@@ -392,9 +391,9 @@ export default function JeuDePiste() {
                   return <div key={step} className={cls} />;
                 })}
               </div>
-              <motion.button className="btn btn-outline btn-sm" onClick={() => navigate('map')} whileTap={{ scale: 0.97 }}>
-                {'\u{1F5FA}'} Carte
-              </motion.button>
+              <a className="btn btn-primary btn-sm" href="tel:0634502963">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              </a>
             </div>
             <div className="clue-image-container">
               <img src={currentStopData.image} alt="Image indice - lieu a decouvrir" className="clue-image blurred" />
@@ -474,7 +473,7 @@ export default function JeuDePiste() {
             />
             <div className="map-legend">
               <div className="legend-item"><div className="legend-dot visited" /><span>Decouvert</span></div>
-              <div className="legend-item"><div className="legend-dot locked" /><span>A trouver</span></div>
+              <div className="legend-item"><div className="legend-dot locked" /><span>Raté</span></div>
             </div>
           </motion.div>
         )}
@@ -541,7 +540,13 @@ export default function JeuDePiste() {
 
         {/* ── END ── */}
         {screen === 'end' && (() => {
-          const level = getFinalLevel(total, max);
+          const pathDist = getPathDistance(order);
+          const durationSec = state.startedAt && state.completedAt
+            ? (state.completedAt - state.startedAt) / 1000
+            : 0;
+          const speedBonus = computeSpeedBonus(pathDist, durationSec);
+          const totalWithBonus = total + speedBonus;
+          const level = getFinalLevel(totalWithBonus, max);
           return (
             <motion.div
               key="end"
@@ -566,9 +571,31 @@ export default function JeuDePiste() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2, duration: 0.3, ease: smooth }}
               >
-                <span className="total-pts">{total} / {max} pts</span>
-                <span className="total-max" dangerouslySetInnerHTML={{ __html: renderStars(Math.round(total / max * 3)) }} />
+                <span className="total-pts">{totalWithBonus} / {max} pts</span>
+                <span className="total-max" dangerouslySetInnerHTML={{ __html: renderStars(Math.round(totalWithBonus / max * 3)) }} />
                 <span className={`end-level ${level.cls}`}>{level.label}</span>
+              </motion.div>
+              <motion.div
+                className="end-stats"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.25, duration: 0.3, ease: smooth }}
+              >
+                <div className="end-stat-row">
+                  <span className="end-stat-icon">{'\u{23F0}'}</span>
+                  <span className="end-stat-label">Temps</span>
+                  <span className="end-stat-value">{durationSec > 0 ? formatDuration(durationSec) : '--'}</span>
+                </div>
+                <div className="end-stat-row">
+                  <span className="end-stat-icon">{'\u{1F6B6}'}</span>
+                  <span className="end-stat-label">Distance</span>
+                  <span className="end-stat-value">{pathDist >= 1000 ? `${(pathDist / 1000).toFixed(1)} km` : `${Math.round(pathDist)} m`}</span>
+                </div>
+                <div className="end-stat-row">
+                  <span className="end-stat-icon">{'\u{26A1}'}</span>
+                  <span className="end-stat-label">Bonus vitesse</span>
+                  <span className="end-stat-value bonus">+{speedBonus} pts</span>
+                </div>
               </motion.div>
               <div className="end-recap">
                 {order.map((stopIdx: number, i: number) => {
@@ -596,6 +623,10 @@ export default function JeuDePiste() {
               </div>
               <motion.button className="btn btn-primary" onClick={resetGame} style={{ marginTop: '1.5rem' }} whileTap={{ scale: 0.97 }}>
                 Recommencer {'\u{1F504}'}
+              </motion.button>
+              
+              <motion.button className="btn btn-outline" onClick={() => navigate('map')} style={{ marginTop: '1.5rem' }} whileTap={{ scale: 0.97 }}>
+                Revoir le parcours {'\u{1F5FA}'} 
               </motion.button>
             </motion.div>
           );

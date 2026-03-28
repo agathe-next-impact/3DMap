@@ -9,6 +9,8 @@ export interface GameState {
   started: boolean;
   completed: boolean;
   shuffleOrder: number[] | null;
+  startedAt: number | null;
+  completedAt: number | null;
 }
 
 export interface StopScore {
@@ -42,7 +44,9 @@ export function createInitialState(): GameState {
     scores: [],
     started: false,
     completed: false,
-    shuffleOrder: null
+    shuffleOrder: null,
+    startedAt: null,
+    completedAt: null
   };
 }
 
@@ -91,7 +95,7 @@ export function getTotalScore(state: GameState): number {
 }
 
 export function getMaxScore(): number {
-  return STOPS.length * SCORE_LEVELS[0].points;
+  return STOPS.length * SCORE_LEVELS[0].points + 500;
 }
 
 export function getFinalLevel(total: number, max: number): { label: string; cls: string } {
@@ -99,6 +103,46 @@ export function getFinalLevel(total: number, max: number): { label: string; cls:
   if (pct >= 0.8) return { label: "Explorateur d'elite", cls: 'gold' };
   if (pct >= 0.5) return { label: 'Bon promeneur', cls: 'silver' };
   return { label: 'Apprenti explorateur', cls: 'bronze' };
+}
+
+/** Haversine distance between two GPS points, returns meters */
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/** Total path distance in meters following the stop order */
+export function getPathDistance(order: number[]): number {
+  let dist = 0;
+  for (let i = 1; i < order.length; i++) {
+    const a = STOPS[order[i - 1]];
+    const b = STOPS[order[i]];
+    dist += haversineDistance(a.lat, a.lng, b.lat, b.lng);
+  }
+  return dist;
+}
+
+/** Format duration in seconds to "Xh Ymin Zs" or "Ymin Zs" */
+export function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}min`;
+  if (m > 0) return `${m}min ${s.toString().padStart(2, '0')}s`;
+  return `${s}s`;
+}
+
+/** Speed bonus: based on average speed (km/h). Faster = more bonus, capped at 150 pts */
+export function computeSpeedBonus(distanceMeters: number, durationSeconds: number): number {
+  if (durationSeconds <= 0 || distanceMeters <= 0) return 0;
+  const speedKmh = (distanceMeters / 1000) / (durationSeconds / 3600);
+  // Target ~3 km/h walking speed = 200 pts, scale linearly, cap at 500
+  const bonus = Math.round(speedKmh * 66);
+  return Math.min(Math.max(bonus, 20), 500);
 }
 
 export function renderStars(count: number): string {

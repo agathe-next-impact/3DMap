@@ -204,7 +204,8 @@
     color: white;
   }
   .btn-primary:hover {
-    background: var(--brand-teal);
+    background: var(--brand-coral);
+    opacity: 0.9;
   }
   .btn-secondary {
     background: var(--brand-teal);
@@ -214,13 +215,14 @@
     background: var(--brand-dark);
   }
   .btn-outline {
-    background: transparent;
+    background: white;
     color: var(--brand-coral);
     border: 2px solid var(--brand-coral);
   }
   .btn-outline:hover {
-    background: var(--brand-coral);
-    color: white;
+    background: white;
+    color: var(--brand-coral);
+    opacity: 0.9;
   }
   .btn-success {
     background: var(--success);
@@ -251,7 +253,7 @@
     z-index: 10;
   }
   .step-badge {
-    background: var(--brand-pink);
+    background: var(--brand-green);
     color: white;
     padding: 0.3rem 0.8rem;
     border-radius: 5px;
@@ -273,7 +275,8 @@
     transition: background 0.3s, transform 0.3s;
   }
   .progress-dot.done {
-    background: var(--success);
+    background: var(--brand-pink);
+    opacity: 0.6;
   }
   .progress-dot.current {
     background: var(--brand-pink);
@@ -406,12 +409,12 @@
     border: 2px solid;
   }
   .legend-dot.visited {
-    background: var(--success);
-    border-color: var(--success);
+    background: var(--brand-green);
+    border-color: var(--brand-green);
   }
   .legend-dot.locked {
-    background: var(--locked);
-    border-color: #999;
+    background: red;
+    border-color: red;
   }
 
   /* ── Reveal Screen ── */
@@ -524,6 +527,41 @@
     max-width: 400px;
     line-height: 1.6;
   }
+  .end-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+    max-width: 360px;
+    margin-bottom: 1.5rem;
+    background: white;
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    backdrop-filter: blur(8px);
+  }
+  .end-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.95rem;
+  }
+  .end-stat-icon {
+    font-size: 1.2rem;
+    width: 1.6rem;
+    text-align: center;
+  }
+  .end-stat-label {
+    color: var(--text-light);
+  }
+  .end-stat-value {
+    margin-left: auto;
+    font-weight: 700;
+    color: var(--primary-dark);
+  }
+  .end-stat-value.bonus {
+    color: var(--brand-orange);
+  }
+
   .end-recap {
     display: flex;
     flex-direction: column;
@@ -584,9 +622,9 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    font-weight: bold;
-    font-size: 14px;
-    border: 3px solid white;
+    font-size: 18px;
+    background: white;
+    border: 3px solid #ccc;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     transition: transform 0.3s;
   }
@@ -594,17 +632,13 @@
     transform: scale(1.2);
   }
   .marker-visited {
-    background: var(--success);
-    color: white;
+    border-color: #facc15;
   }
   .marker-locked {
-    background: var(--locked);
-    color: white;
+    border-color: var(--brand-green);
   }
   .marker-wrong-guess {
-    background: var(--brand-pink);
-    color: white;
-    opacity: 0.7;
+    border-color: #ef4444;
   }
   .user-location {
     width: 16px;
