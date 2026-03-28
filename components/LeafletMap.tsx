@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { STOPS } from '@/lib/stops';
@@ -30,6 +30,7 @@ export default function LeafletMap({
   const markersRef = useRef<(L.Marker | L.Polyline)[]>([]);
   const userMarkerRef = useRef<L.Marker | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   // Expose callbacks on window for popup onclick (Leaflet popups use raw HTML)
   useEffect(() => {
@@ -82,7 +83,15 @@ export default function LeafletMap({
           userMarkerRef.current.bindTooltip('Vous', { direction: 'top', offset: [0, -10] });
         }
       },
-      () => {},
+      (err) => {
+        if (err.code === 1) {
+          setGeoError('Activez la localisation pour voir votre position sur la carte.');
+        } else if (err.code === 2) {
+          setGeoError('Position GPS indisponible.');
+        } else if (err.code === 3) {
+          setGeoError('La localisation a pris trop de temps.');
+        }
+      },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
     );
     return () => {
@@ -201,5 +210,15 @@ export default function LeafletMap({
     setTimeout(() => map.invalidateSize(), 100);
   }, [gameState, previousScreen]);
 
-  return <div ref={containerRef} id="map-container" style={{ flex: 1, minHeight: 0, position: 'relative', zIndex: 1 }} />;
+  return (
+    <div style={{ flex: 1, minHeight: 0, position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
+      {geoError && (
+        <div className="geo-error-bar">
+          <span>{geoError}</span>
+          <button onClick={() => setGeoError(null)} aria-label="Fermer">&times;</button>
+        </div>
+      )}
+      <div ref={containerRef} id="map-container" style={{ flex: 1, minHeight: 0 }} />
+    </div>
+  );
 }

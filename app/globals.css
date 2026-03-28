@@ -640,6 +640,27 @@
   .marker-wrong-guess {
     border-color: #ef4444;
   }
+  .geo-error-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #fbbf24;
+    z-index: 1000;
+  }
+  .geo-error-bar button {
+    background: none;
+    border: none;
+    color: #92400e;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+  }
   .user-location {
     width: 16px;
     height: 16px;
