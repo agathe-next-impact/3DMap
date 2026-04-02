@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { STOPS } from '@/lib/stops';
 import {
@@ -367,7 +368,9 @@ export default function JeuDePiste() {
             {...fadeSlideUp}
             transition={{ duration: 0.3, ease: smooth }}
           >
-            <div className="welcome-icon">{'\u{1F3F0}'}</div>
+            <div className="welcome-icon">
+              <Image src="/icons/logo.png" alt="Icone de bienvenue" width={120} height={120} />
+            </div>
             <h1> L’HERMITAGE, TOUTE UNE HISTOIRE !</h1>
             <p className="subtitle">
               {"Bienvenue \u00e0 l\u2019Hermitage, un lieu charg\u00e9 d\u2019Histoire(s). Nous vous proposons d\u2019aller \u00e0 la recherche des traces laiss\u00e9es par le temps sur le site\u00a0: autant d\u2019indices pour d\u00e9couvrir l\u2019histoire du domaine et des personnes qui l\u2019ont fa\u00e7onn\u00e9. Votre voyage \u00e0 l\u2019Hermitage commence maintenant\u00a0!"}

@@ -51,33 +51,11 @@
     justify-content: center;
     text-align: center;
     padding: 2rem;
-    background: white;
+    background: rgba(255, 127, 80, 0.025);
     color: var(--brand-dark);
-    position: relative;
-    overflow: hidden;
-  }
-  #welcome::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, var(--brand-teal) 0%, var(--brand-green) 100%);
-    background-image: url('/images/stops/grande-maison.jpg');
-    background-size: cover;
-    background-position: center;
-    filter: blur(4px);
-    transform: scale(1.1);
-    z-index: 0;
-  }
-  #welcome::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(255, 255, 255, 0.75);
-    z-index: 1;
   }
   #welcome > * {
     position: relative;
-    z-index: 2;
   }
   .welcome-icon {
     font-size: 4rem;
