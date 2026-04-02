@@ -837,6 +837,45 @@
     top: 36px;
   }
 
+  /* ── PWA Installed Toast ── */
+  .pwa-installed-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--brand-dark, #2a4a51);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    z-index: 10000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    animation: toast-in 0.3s ease-out;
+    max-width: 90vw;
+  }
+  .pwa-installed-toast p {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+  }
+  .pwa-installed-toast p:last-of-type {
+    font-size: 0.85rem;
+    opacity: 0.85;
+  }
+  .pwa-installed-toast .pwa-btn {
+    margin-top: 0.5rem;
+    background: white;
+    color: var(--brand-dark, #2a4a51);
+    border: none;
+    padding: 0.35rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(1rem); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
   /* ── Persistent Score Bar ── */
   .score-bar {
     position: fixed;

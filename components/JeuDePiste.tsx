@@ -55,6 +55,7 @@ export default function JeuDePiste() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBar, setShowInstallBar] = useState(false);
   const [showOpenAppBar, setShowOpenAppBar] = useState(false);
+  const [showInstalledToast, setShowInstalledToast] = useState(false);
   const installDismissed = useRef(false);
   const hintRef = useRef<HTMLDivElement>(null);
   const [hintHeight, setHintHeight] = useState(0);
@@ -111,11 +112,7 @@ export default function JeuDePiste() {
       setShowInstallBar(false);
       setInstallPrompt(null);
       localStorage.setItem('pwaInstalled', '1');
-      // Small delay to let the OS register the installed PWA,
-      // then open the start_url — the OS will route it to the standalone app
-      setTimeout(() => {
-        window.open('/', '_blank');
-      }, 800);
+      setShowInstalledToast(true);
     };
     window.addEventListener('appinstalled', installed);
     return () => {
@@ -318,15 +315,20 @@ export default function JeuDePiste() {
       {/* PWA Open App Banner — shown when app is installed but user is in browser */}
       {hasOpenAppBar && (
         <div className="pwa-install-bar visible">
-          <span className="pwa-text">{'\u{1F4F1}'} Ouvrir dans l&apos;application</span>
-          <button className="pwa-btn" onClick={() => {
-            // Open start_url in a new context — the OS will route to the standalone PWA
-            window.open('/', '_blank');
-          }}>Ouvrir</button>
+          <span className="pwa-text">{'\u{1F4F1}'} Ouvrez l&apos;app depuis votre écran d&apos;accueil</span>
           <button className="pwa-close" onClick={() => {
             setShowOpenAppBar(false);
             localStorage.setItem('pwaRedirectDismissed', '1');
           }} aria-label="Fermer">{'\u{2715}'}</button>
+        </div>
+      )}
+
+      {/* Toast after PWA installation */}
+      {showInstalledToast && (
+        <div className="pwa-installed-toast">
+          <p>{'\u{2705}'} Application installée !</p>
+          <p>Retrouvez-la sur votre écran d&apos;accueil</p>
+          <button className="pwa-btn" onClick={() => setShowInstalledToast(false)}>OK</button>
         </div>
       )}
 
