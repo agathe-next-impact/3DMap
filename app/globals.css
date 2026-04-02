@@ -843,7 +843,7 @@
     bottom: 2rem;
     left: 50%;
     transform: translateX(-50%);
-    background: var(--brand-dark, #2a4a51);
+    background: var(--brand-coral);
     color: white;
     padding: 1rem 1.5rem;
     border-radius: 12px;

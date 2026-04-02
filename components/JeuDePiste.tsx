@@ -333,7 +333,7 @@ export default function JeuDePiste() {
       {/* Toast after PWA installation */}
       {showInstalledToast && (
         <div className="pwa-installed-toast">
-          <p>{'\u{2705}'} Application installée !</p>
+          <p>Application installée !</p>
           <p>Retrouvez-la sur votre écran d&apos;accueil</p>
           <button className="pwa-btn" onClick={() => setShowInstalledToast(false)}>OK</button>
         </div>
