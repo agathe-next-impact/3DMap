@@ -111,6 +111,11 @@ export default function JeuDePiste() {
       setShowInstallBar(false);
       setInstallPrompt(null);
       localStorage.setItem('pwaInstalled', '1');
+      // Small delay to let the OS register the installed PWA,
+      // then open the start_url — the OS will route it to the standalone app
+      setTimeout(() => {
+        window.open('/', '_blank');
+      }, 800);
     };
     window.addEventListener('appinstalled', installed);
     return () => {
@@ -126,7 +131,7 @@ export default function JeuDePiste() {
     }
   }, []);
 
-  // Detect installed PWA and redirect from browser to standalone app
+  // Detect installed PWA and show "Open in app" banner when in browser
   useEffect(() => {
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
@@ -143,26 +148,7 @@ export default function JeuDePiste() {
     const redirectDismissed = localStorage.getItem('pwaRedirectDismissed') === '1';
 
     if (wasInstalled && !redirectDismissed) {
-      // Also try the getInstalledRelatedApps API (Chrome Android)
-      const nav = navigator as unknown as {
-        getInstalledRelatedApps?: () => Promise<Array<{ platform: string }>>;
-      };
-      if (nav.getInstalledRelatedApps) {
-        nav.getInstalledRelatedApps().then((apps) => {
-          if (apps.length > 0) {
-            // App confirmed installed — auto-redirect
-            window.location.replace(window.location.href);
-          } else {
-            // API says not installed — could be stale flag, show banner anyway
-            setShowOpenAppBar(true);
-          }
-        }).catch(() => {
-          setShowOpenAppBar(true);
-        });
-      } else {
-        // No API available, rely on localStorage flag
-        setShowOpenAppBar(true);
-      }
+      setShowOpenAppBar(true);
     }
   }, []);
 
@@ -334,8 +320,8 @@ export default function JeuDePiste() {
         <div className="pwa-install-bar visible">
           <span className="pwa-text">{'\u{1F4F1}'} Ouvrir dans l&apos;application</span>
           <button className="pwa-btn" onClick={() => {
-            // Navigate to start_url to trigger standalone launch
-            window.location.replace('/');
+            // Open start_url in a new context — the OS will route to the standalone PWA
+            window.open('/', '_blank');
           }}>Ouvrir</button>
           <button className="pwa-close" onClick={() => {
             setShowOpenAppBar(false);
