@@ -850,7 +850,7 @@
     text-align: center;
     z-index: 10000;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    animation: toast-in 0.3s ease-out;
+    animation: toast-in 0.3s ease-out, toast-out 0.4s ease-in 5.6s forwards;
     max-width: 90vw;
   }
   .pwa-installed-toast p {
@@ -874,6 +874,10 @@
   @keyframes toast-in {
     from { opacity: 0; transform: translateX(-50%) translateY(1rem); }
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  @keyframes toast-out {
+    from { opacity: 1; transform: translateX(-50%) translateY(0); }
+    to   { opacity: 0; transform: translateX(-50%) translateY(1rem); }
   }
 
   /* ── Persistent Score Bar ── */

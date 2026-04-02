@@ -149,6 +149,13 @@ export default function JeuDePiste() {
     }
   }, []);
 
+  // Auto-dismiss installed toast after 6s
+  useEffect(() => {
+    if (!showInstalledToast) return;
+    const timer = setTimeout(() => setShowInstalledToast(false), 6000);
+    return () => clearTimeout(timer);
+  }, [showInstalledToast]);
+
   // Persist state changes
   const update = useCallback((fn: (s: GameState) => GameState) => {
     setGs((prev) => {
