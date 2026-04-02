@@ -53,6 +53,7 @@ export default function JeuDePiste() {
   const [showHint, setShowHint] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBar, setShowInstallBar] = useState(false);
+  const [showOpenAppBar, setShowOpenAppBar] = useState(false);
   const installDismissed = useRef(false);
   const hintRef = useRef<HTMLDivElement>(null);
   const [hintHeight, setHintHeight] = useState(0);
@@ -105,7 +106,11 @@ export default function JeuDePiste() {
       if (!installDismissed.current) setShowInstallBar(true);
     };
     window.addEventListener('beforeinstallprompt', handler);
-    const installed = () => { setShowInstallBar(false); setInstallPrompt(null); };
+    const installed = () => {
+      setShowInstallBar(false);
+      setInstallPrompt(null);
+      localStorage.setItem('pwaInstalled', '1');
+    };
     window.addEventListener('appinstalled', installed);
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
@@ -117,6 +122,46 @@ export default function JeuDePiste() {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+
+  // Detect installed PWA and redirect from browser to standalone app
+  useEffect(() => {
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true;
+
+    if (isStandalone) {
+      // Already running as installed app — mark as installed for future visits
+      localStorage.setItem('pwaInstalled', '1');
+      return;
+    }
+
+    // Running in browser — check if app was previously installed
+    const wasInstalled = localStorage.getItem('pwaInstalled') === '1';
+    const redirectDismissed = localStorage.getItem('pwaRedirectDismissed') === '1';
+
+    if (wasInstalled && !redirectDismissed) {
+      // Also try the getInstalledRelatedApps API (Chrome Android)
+      const nav = navigator as unknown as {
+        getInstalledRelatedApps?: () => Promise<Array<{ platform: string }>>;
+      };
+      if (nav.getInstalledRelatedApps) {
+        nav.getInstalledRelatedApps().then((apps) => {
+          if (apps.length > 0) {
+            // App confirmed installed — auto-redirect
+            window.location.replace(window.location.href);
+          } else {
+            // API says not installed — could be stale flag, show banner anyway
+            setShowOpenAppBar(true);
+          }
+        }).catch(() => {
+          setShowOpenAppBar(true);
+        });
+      } else {
+        // No API available, rely on localStorage flag
+        setShowOpenAppBar(true);
+      }
     }
   }, []);
 
@@ -257,8 +302,10 @@ export default function JeuDePiste() {
 
   // Top offset calculation
   const hasInstallBar = showInstallBar;
+  const hasOpenAppBar = showOpenAppBar && !showInstallBar;
+  const hasTopBar = hasInstallBar || hasOpenAppBar;
   const hasScoreBar = state.started && screen !== 'welcome' && screen !== 'end';
-  const topOffset = (hasInstallBar ? 36 : 0) + (hasScoreBar ? 30 : 0);
+  const topOffset = (hasTopBar ? 36 : 0) + (hasScoreBar ? 30 : 0);
 
   return (
     <>
@@ -281,9 +328,24 @@ export default function JeuDePiste() {
         </div>
       )}
 
+      {/* PWA Open App Banner — shown when app is installed but user is in browser */}
+      {hasOpenAppBar && (
+        <div className="pwa-install-bar visible">
+          <span className="pwa-text">{'\u{1F4F1}'} Ouvrir dans l&apos;application</span>
+          <button className="pwa-btn" onClick={() => {
+            // Navigate to start_url to trigger standalone launch
+            window.location.replace('/');
+          }}>Ouvrir</button>
+          <button className="pwa-close" onClick={() => {
+            setShowOpenAppBar(false);
+            localStorage.setItem('pwaRedirectDismissed', '1');
+          }} aria-label="Fermer">{'\u{2715}'}</button>
+        </div>
+      )}
+
       {/* Score Bar */}
       {hasScoreBar && (
-        <div className="score-bar visible" style={hasInstallBar ? { top: 36 } : undefined}>
+        <div className="score-bar visible" style={hasTopBar ? { top: 36 } : undefined}>
           <div className="sb-score">
             <span className="sb-pts">{total}</span>
             <span className="sb-max">/ {max} pts</span>

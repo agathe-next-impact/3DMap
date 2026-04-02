@@ -4,7 +4,8 @@
       "Bash(dir:*)",
       "Bash(cmd /c \"dir c:\\\\dev\\\\jeu-piste-hermitage\\\\public\")",
       "Bash(cmd /c \"mkdir c:\\\\dev\\\\jeu-piste-hermitage\\\\public\\\\images\\\\stops\")",
-      "Bash(npx next build)"
+      "Bash(npx next build)",
+      "Bash(grep -r \"beforeinstallprompt\\\\|registerServiceWorker\\\\|'sw.js'\\\\|\\\\\"sw.js\\\\\"\\\\|service.?worker\" /c/dev/jeu-piste-hermitage --include=\"*.tsx\" --include=\"*.ts\" --include=\"*.jsx\" --include=\"*.js\" ! -path \"*/node_modules/*\" ! -path \"*/.next/*\")"
     ]
   }
 }
