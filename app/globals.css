@@ -59,7 +59,7 @@
   }
   .welcome-icon {
     font-size: 4rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0;
     animation: float 3s ease-in-out infinite;
   }
   @keyframes float {
@@ -67,12 +67,12 @@
     50% { transform: translateY(-10px); }
   }
   #welcome h1 {
-    font-size: 2rem;
+    font-size: 1.6rem;
     margin-bottom: 0.5rem;
     letter-spacing: 0.02em;
   }
   #welcome .subtitle {
-    font-size: 1.1rem;
+    font-size: 1rem;
     opacity: 0.85;
     margin-bottom: 2rem;
     max-width: 400px;

@@ -46,7 +46,7 @@ export const STOPS: Stop[] = [
       "A l'origine, c'est une construction montagnarde. Mais ici, on en trouve sur un plateau.",
     clueHint: "Je suis caché près du totem.",
     description:
-      "Dans ma bannette et devinette. Présent sur tous les continents, j'ai plus d'un million d'années. ",
+      "Construit dans les années 70 pour accueillir les jeunes formés par l’ONG du CIDR. Aujourd’hui , après un petit coup de neuf , ils vous accueillent pour une nuit à l’orée du bois 😉",
     history: "",
     svgColors: { sky: "#F0E68C", ground: "#6B8E23", accent: "#DEB887" },
   },
