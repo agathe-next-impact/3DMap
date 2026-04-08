@@ -181,7 +181,7 @@ export const STOPS: Stop[] = [
     categoryIcon: "\u{1F3DE}",
     image: "/images/stops/steles.jpg",
     clueText:
-      "Je suis une partie de la mémoire de ce bois, vous foulez en ce moment même un lieu d'histoire.",
+      "Je suis une partie de la mémoire de ce bois, vous foulez en ce moment même un lieu d'histoire. Je suis une oeuvre d'art à l'entrée de la clairière qui reconstitut par des pierres les cimetières temporaires que l'on pouvait trouver lors de la première guerre mondiale qui a fait rage au coeur du bois. ",
     clueHint: "Depuis l'accident, dirigez-vous vers le nord-est.",
     description:
       "EMPREINTE : Ces stèles blanches érigées vers le ciel, rappellent les cimetières des soldats inconnus.",
